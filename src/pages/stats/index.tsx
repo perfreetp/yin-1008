@@ -36,7 +36,9 @@ const COVER_MAP: Record<string, string> = {
 };
 
 const StatsPage: React.FC = () => {
-  const { orders, initStore, initialized, monthlyBudgets, setMonthlyBudget, confirmCollection, removeFromCollection } = useOrderStore();
+  const { orders, initStore, initialized, monthlyBudgets, setMonthlyBudget, confirmCollection, removeFromCollection, abandonCollection, restoreToCabinet, deferPayment, togglePaymentReminder, getBudgetDecisionList } = useOrderStore();
+  const [cabinetTab, setCabinetTab] = useState<'collected' | 'pending' | 'removed'>('collected');
+  const [expandedDecisionMonth, setExpandedDecisionMonth] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialized) initStore();
@@ -56,9 +58,11 @@ const StatsPage: React.FC = () => {
       return s + o.payments.filter(p => p.status === 'paid').reduce((ps, p) => ps + p.amount, 0);
     }, 0);
     const totalPending = totalBudget - totalPaid;
-    const acceptedCount = orders.filter(o => o.status === 'accepted').length;
+    const collectedCount = orders.filter(o => o.cabinetStatus === 'collected').length;
+    const pendingCabinetCount = orders.filter(o => o.cabinetStatus === 'pending_cabinet').length;
+    const removedCount = orders.filter(o => o.cabinetStatus === 'removed').length;
     const totalDelayed = orders.filter(o => o.isDelayed).length;
-    return { totalBudget, totalPaid, totalPending, acceptedCount, totalDelayed };
+    return { totalBudget, totalPaid, totalPending, collectedCount, pendingCabinetCount, removedCount, totalDelayed };
   }, [orders]);
 
   const monthStats = useMemo(() => {
@@ -114,6 +118,14 @@ const StatsPage: React.FC = () => {
 
   const pendingCabinetOrders = useMemo(() => {
     return orders.filter(o => o.cabinetStatus === 'pending_cabinet').sort((a, b) => {
+      const da = a.acceptedAt ? new Date(a.acceptedAt).getTime() : 0;
+      const db = b.acceptedAt ? new Date(b.acceptedAt).getTime() : 0;
+      return db - da;
+    });
+  }, [orders]);
+
+  const removedOrders = useMemo(() => {
+    return orders.filter(o => o.cabinetStatus === 'removed').sort((a, b) => {
       const da = a.acceptedAt ? new Date(a.acceptedAt).getTime() : 0;
       const db = b.acceptedAt ? new Date(b.acceptedAt).getTime() : 0;
       return db - da;
@@ -187,23 +199,29 @@ const StatsPage: React.FC = () => {
               transition: 'width 0.5s'
             }} />
           </View>
-          <View className={styles.totalBreakdown}>
+          <View className={styles.totalBreakdown} style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
             <View className={styles.breakdownItem}>
-              <Text className={styles.breakdownLabel}>已支付</Text>
-              <Text className={classnames(styles.breakdownValue, styles.breakdownGold)}>
-                ¥{overview.totalPaid.toFixed(0)}
-              </Text>
-            </View>
-            <View className={styles.breakdownItem}>
-              <Text className={styles.breakdownLabel}>待支付</Text>
+              <Text className={styles.breakdownLabel}>待入柜</Text>
               <Text className={styles.breakdownValue}>
-                ¥{overview.totalPending.toFixed(0)}
+                {overview.pendingCabinetCount}件
               </Text>
             </View>
             <View className={styles.breakdownItem}>
               <Text className={styles.breakdownLabel}>已收藏</Text>
+              <Text className={classnames(styles.breakdownValue, styles.breakdownGold)}>
+                {overview.collectedCount}件
+              </Text>
+            </View>
+            <View className={styles.breakdownItem}>
+              <Text className={styles.breakdownLabel}>已出柜</Text>
               <Text className={styles.breakdownValue}>
-                {overview.acceptedCount}件
+                {overview.removedCount}件
+              </Text>
+            </View>
+            <View className={styles.breakdownItem}>
+              <Text className={styles.breakdownLabel}>延期</Text>
+              <Text className={styles.breakdownValue}>
+                {overview.totalDelayed}件
               </Text>
             </View>
           </View>
@@ -288,10 +306,17 @@ const StatsPage: React.FC = () => {
               const isHighest = m.pending === budgetWarning.maxPending;
               const budgetLimit = monthlyBudgets.find(b => b.month === m.month)?.limit || 0;
               const isOverBudget = budgetLimit > 0 && m.pending > budgetLimit;
+              const isNearBudget = budgetLimit > 0 && m.pending >= budgetLimit * 0.8 && m.pending < budgetLimit;
               const overAmount = isOverBudget ? m.pending - budgetLimit : 0;
               const barPercent = budgetLimit > 0
                 ? Math.min((m.pending / budgetLimit) * 100, 150)
                 : (m.pending / budgetWarning.maxPending) * 100;
+              const decisionList = getBudgetDecisionList(m.month);
+              const highCount = decisionList.filter(d => d.riskLevel === 'high').length;
+              const mediumCount = decisionList.filter(d => d.riskLevel === 'medium').length;
+              const lowCount = decisionList.filter(d => d.riskLevel === 'low').length;
+              const showDecision = m.pending > 0 && budgetLimit > 0;
+              const isDecisionExpanded = expandedDecisionMonth === m.month;
               return (
                 <View
                   key={m.month}
@@ -301,8 +326,8 @@ const StatsPage: React.FC = () => {
                   }}
                 >
                   <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16rpx' }}>
-                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
-                      <Text style={{ fontSize: '28rpx', fontWeight: 600, color: isOverBudget ? '#EF4444' : isHighest ? '#EF4444' : '#1E1B4B' }}>
+                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx', flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: '28rpx', fontWeight: 600, color: isOverBudget ? '#EF4444' : isNearBudget ? '#F59E0B' : isHighest ? '#EF4444' : '#1E1B4B' }}>
                         {m.label}
                       </Text>
                       {isOverBudget && (
@@ -317,7 +342,19 @@ const StatsPage: React.FC = () => {
                           超预算 ¥{overAmount.toFixed(0)}
                         </View>
                       )}
-                      {!isOverBudget && isHighest && (
+                      {isNearBudget && (
+                        <View style={{
+                          background: '#FEF3C7',
+                          padding: '4rpx 14rpx',
+                          borderRadius: '8rpx',
+                          fontSize: '22rpx',
+                          color: '#D97706',
+                          fontWeight: 600
+                        }}>
+                          即将超支
+                        </View>
+                      )}
+                      {!isOverBudget && !isNearBudget && isHighest && (
                         <View style={{
                           background: '#FEE2E2',
                           padding: '4rpx 14rpx',
@@ -334,7 +371,7 @@ const StatsPage: React.FC = () => {
                       <Text style={{
                         fontSize: '32rpx',
                         fontWeight: 700,
-                        color: isOverBudget ? '#EF4444' : '#F59E0B'
+                        color: isOverBudget ? '#EF4444' : isNearBudget ? '#F59E0B' : '#F59E0B'
                       }}>
                         ¥{m.pending.toFixed(0)}
                       </Text>
@@ -375,9 +412,11 @@ const StatsPage: React.FC = () => {
                       height: '100%',
                       background: isOverBudget
                         ? 'linear-gradient(90deg, #EF4444, #F87171)'
-                        : isHighest
-                          ? 'linear-gradient(90deg, #EF4444, #F87171)'
-                          : 'linear-gradient(90deg, #F59E0B, #FCD34D)',
+                        : isNearBudget
+                          ? 'linear-gradient(90deg, #F59E0B, #FCD34D)'
+                          : isHighest
+                            ? 'linear-gradient(90deg, #EF4444, #F87171)'
+                            : 'linear-gradient(90deg, #F59E0B, #FCD34D)',
                       borderRadius: '999rpx'
                     }} />
                     {budgetLimit > 0 && (
@@ -392,18 +431,145 @@ const StatsPage: React.FC = () => {
                       }} />
                     )}
                   </View>
-                  {isOverBudget && (
+
+                  {showDecision && (
                     <View style={{
-                      background: '#FEF2F2',
+                      background: isOverBudget ? '#FEF2F2' : '#FFFBEB',
                       borderRadius: '8rpx',
                       padding: '12rpx 16rpx',
                       marginBottom: '12rpx'
                     }}>
-                      <Text style={{ fontSize: '22rpx', color: '#EF4444', fontWeight: 600 }}>
-                        💡 优先考虑取消或延后以下订单：
-                      </Text>
+                      <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: '22rpx', color: isOverBudget ? '#EF4444' : '#D97706', fontWeight: 600 }}>
+                          💡 决策建议：高风险 {highCount} 项 · 中风险 {mediumCount} 项 · 低风险 {lowCount} 项
+                        </Text>
+                        <Text
+                          style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600 }}
+                          onClick={() => setExpandedDecisionMonth(isDecisionExpanded ? null : m.month)}
+                        >
+                          {isDecisionExpanded ? '收起' : '查看决策排序 →'}
+                        </Text>
+                      </View>
+                      {isDecisionExpanded && (
+                        <View style={{ marginTop: '16rpx' }}>
+                          {decisionList.map((item, idx) => (
+                            <View
+                              key={item.payment.id}
+                              style={{
+                                background: '#FFFFFF',
+                                borderRadius: '8rpx',
+                                padding: '12rpx',
+                                marginBottom: idx < decisionList.length - 1 ? '8rpx' : 0
+                              }}
+                            >
+                              <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx', marginBottom: '8rpx' }}>
+                                <View style={{
+                                  padding: '2rpx 10rpx',
+                                  borderRadius: '6rpx',
+                                  fontSize: '20rpx',
+                                  fontWeight: 600,
+                                  background: item.riskLevel === 'high' ? '#FEE2E2' : item.riskLevel === 'medium' ? '#FEF3C7' : '#D1FAE5',
+                                  color: item.riskLevel === 'high' ? '#EF4444' : item.riskLevel === 'medium' ? '#D97706' : '#059669'
+                                }}>
+                                  {item.riskLevel === 'high' ? '高' : item.riskLevel === 'medium' ? '中' : '低'}
+                                </View>
+                                <Text style={{ fontSize: '24rpx', fontWeight: 600, color: '#1E1B4B', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.order.title}
+                                </Text>
+                                <Text style={{ fontSize: '24rpx', fontWeight: 700, color: '#F59E0B', flexShrink: 0 }}>
+                                  ¥{item.payment.amount.toFixed(0)}
+                                </Text>
+                              </View>
+                              <Text style={{ fontSize: '20rpx', color: '#6B7280', marginBottom: '12rpx' }}>
+                                {item.reason}
+                              </Text>
+                              <View style={{ display: 'flex', gap: '8rpx' }}>
+                                <Text
+                                  style={{
+                                    flex: 1,
+                                    textAlign: 'center',
+                                    padding: '8rpx 0',
+                                    fontSize: '22rpx',
+                                    fontWeight: 600,
+                                    color: '#8B5CF6',
+                                    background: 'rgba(139,92,246,0.1)',
+                                    borderRadius: '6rpx'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    Taro.showModal({
+                                      title: '延期付款',
+                                      editable: true,
+                                      placeholderText: '请输入新的到期日期（YYYY-MM-DD）',
+                                      content: item.payment.dueDate || '',
+                                      success: (res) => {
+                                        if (res.confirm && res.content?.trim()) {
+                                          const newDate = res.content.trim();
+                                          deferPayment(item.order.id, item.payment.id, '延期付款', newDate);
+                                          Taro.showToast({ title: '已延期', icon: 'success' });
+                                        }
+                                      }
+                                    });
+                                  }}
+                                >
+                                  延期
+                                </Text>
+                                <Text
+                                  style={{
+                                    flex: 1,
+                                    textAlign: 'center',
+                                    padding: '8rpx 0',
+                                    fontSize: '22rpx',
+                                    fontWeight: 600,
+                                    color: '#6B7280',
+                                    background: '#F3F4F6',
+                                    borderRadius: '6rpx'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePaymentReminder(item.order.id, item.payment.id);
+                                    Taro.showToast({ title: '已关闭提醒', icon: 'none' });
+                                  }}
+                                >
+                                  关提醒
+                                </Text>
+                                <Text
+                                  style={{
+                                    flex: 1,
+                                    textAlign: 'center',
+                                    padding: '8rpx 0',
+                                    fontSize: '22rpx',
+                                    fontWeight: 600,
+                                    color: '#F59E0B',
+                                    background: 'rgba(245,158,11,0.1)',
+                                    borderRadius: '6rpx'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    Taro.showModal({
+                                      title: '暂缓付款',
+                                      editable: true,
+                                      placeholderText: '请输入暂缓原因',
+                                      success: (res) => {
+                                        if (res.confirm && res.content?.trim()) {
+                                          const reason = res.content.trim();
+                                          deferPayment(item.order.id, item.payment.id, reason);
+                                          Taro.showToast({ title: '已暂缓', icon: 'success' });
+                                        }
+                                      }
+                                    });
+                                  }}
+                                >
+                                  暂缓
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                     </View>
                   )}
+
                   {m.orders.map((o, oIdx) => {
                     const isPriorityCut = isOverBudget && oIdx >= m.orders.length - Math.ceil(overAmount / (m.pending / m.orders.length));
                     return (
@@ -520,84 +686,188 @@ const StatsPage: React.FC = () => {
         )}
       </View>
 
-      {pendingCabinetOrders.length > 0 && (
-        <View className={styles.section}>
-          <View className={styles.sectionHeader}>
-            <Text className={styles.sectionTitle}>📋 待入柜</Text>
-            <Text style={{ fontSize: '24rpx', color: '#F59E0B' }}>{pendingCabinetOrders.length} 件待确认</Text>
-          </View>
-          <View className={styles.collectionGrid}>
-            {pendingCabinetOrders.map(order => {
-              const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
-              return (
-                <View
-                  key={order.id}
-                  className={styles.collectionItem}
-                  onClick={() => Taro.navigateTo({
-                    url: `/pages/order-detail/index?id=${order.id}`
-                  })}
-                >
-                  <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
-                  <View className={styles.collectionInfo}>
-                    <Text className={styles.collectionTitle}>{order.title}</Text>
-                    <View className={styles.collectionMeta}>
-                      <Text className={styles.collectionShop}>{order.shopName}</Text>
-                      <Text
-                        style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          confirmCollection(order.id);
-                          Taro.showToast({ title: '已确认收藏', icon: 'success' });
-                        }}
-                      >
-                        确认收藏 ›
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
-          <Text className={styles.sectionTitle}>🏆 我的收藏</Text>
-          <Text style={{ fontSize: '24rpx', color: '#8B5CF6' }}>共 {acceptedOrders.length} 件</Text>
+          <Text className={styles.sectionTitle}>🏆 我的藏品库</Text>
+          <View style={{ display: 'flex', gap: '8rpx' }}>
+            <Text
+              style={{
+                fontSize: '22rpx',
+                padding: '6rpx 16rpx',
+                borderRadius: '999rpx',
+                fontWeight: 600,
+                background: cabinetTab === 'pending' ? '#8B5CF6' : '#F3F4F6',
+                color: cabinetTab === 'pending' ? '#FFFFFF' : '#6B7280'
+              }}
+              onClick={() => setCabinetTab('pending')}
+            >
+              待入柜 {pendingCabinetOrders.length}
+            </Text>
+            <Text
+              style={{
+                fontSize: '22rpx',
+                padding: '6rpx 16rpx',
+                borderRadius: '999rpx',
+                fontWeight: 600,
+                background: cabinetTab === 'collected' ? '#8B5CF6' : '#F3F4F6',
+                color: cabinetTab === 'collected' ? '#FFFFFF' : '#6B7280'
+              }}
+              onClick={() => setCabinetTab('collected')}
+            >
+              已收藏 {acceptedOrders.length}
+            </Text>
+            <Text
+              style={{
+                fontSize: '22rpx',
+                padding: '6rpx 16rpx',
+                borderRadius: '999rpx',
+                fontWeight: 600,
+                background: cabinetTab === 'removed' ? '#8B5CF6' : '#F3F4F6',
+                color: cabinetTab === 'removed' ? '#FFFFFF' : '#6B7280'
+              }}
+              onClick={() => setCabinetTab('removed')}
+            >
+              已出柜 {removedOrders.length}
+            </Text>
+          </View>
         </View>
-        {acceptedOrders.length > 0 ? (
-          <View className={styles.collectionGrid}>
-            {acceptedOrders.map(order => {
-              const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
-              return (
-                <View
-                  key={order.id}
-                  className={styles.collectionItem}
-                  onClick={() => Taro.navigateTo({
-                    url: `/pages/order-detail/index?id=${order.id}`
-                  })}
-                >
-                  <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
-                  <View className={styles.collectionInfo}>
-                    <Text className={styles.collectionTitle}>{order.title}</Text>
-                    <View className={styles.collectionMeta}>
-                      <Text className={styles.collectionShop}>{order.shopName}</Text>
-                      <Text className={styles.collectionDate}>
-                        {order.acceptedAt ? dayjs(order.acceptedAt).format('M月') : ''}
-                      </Text>
+
+        {cabinetTab === 'pending' && (
+          pendingCabinetOrders.length > 0 ? (
+            <View className={styles.collectionGrid}>
+              {pendingCabinetOrders.map(order => {
+                const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
+                return (
+                  <View
+                    key={order.id}
+                    className={styles.collectionItem}
+                    onClick={() => Taro.navigateTo({
+                      url: `/pages/order-detail/index?id=${order.id}`
+                    })}
+                  >
+                    <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
+                    <View className={styles.collectionInfo}>
+                      <Text className={styles.collectionTitle}>{order.title}</Text>
+                      <View className={styles.collectionMeta}>
+                        <Text className={styles.collectionShop}>{order.shopName}</Text>
+                        <Text
+                          style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmCollection(order.id);
+                            Taro.showToast({ title: '已确认收藏', icon: 'success' });
+                          }}
+                        >
+                          确认收藏 ›
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : (
-          <EmptyState
-            emoji="🏆"
-            title="收藏夹空空如也"
-            description="完成验收并确认收藏的手办会在这里展示"
-          />
+                );
+              })}
+            </View>
+          ) : (
+            <EmptyState
+              emoji="📋"
+              title="暂无待入柜"
+              description="完成验收的手办会在这里等待确认收藏"
+            />
+          )
+        )}
+
+        {cabinetTab === 'collected' && (
+          acceptedOrders.length > 0 ? (
+            <View className={styles.collectionGrid}>
+              {acceptedOrders.map(order => {
+                const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
+                return (
+                  <View
+                    key={order.id}
+                    className={styles.collectionItem}
+                    onClick={() => Taro.navigateTo({
+                      url: `/pages/order-detail/index?id=${order.id}`
+                    })}
+                  >
+                    <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
+                    <View className={styles.collectionInfo}>
+                      <Text className={styles.collectionTitle}>{order.title}</Text>
+                      <View className={styles.collectionMeta}>
+                        <Text className={styles.collectionShop}>{order.shopName}</Text>
+                        <Text className={styles.collectionDate}>
+                          {order.acceptedAt ? dayjs(order.acceptedAt).format('M月') : ''}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <EmptyState
+              emoji="🏆"
+              title="收藏夹空空如也"
+              description="完成验收并确认收藏的手办会在这里展示"
+            />
+          )
+        )}
+
+        {cabinetTab === 'removed' && (
+          removedOrders.length > 0 ? (
+            <View className={styles.collectionGrid}>
+              {removedOrders.map(order => {
+                const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
+                return (
+                  <View
+                    key={order.id}
+                    className={styles.collectionItem}
+                    style={{ opacity: 0.7 }}
+                    onClick={() => Taro.navigateTo({
+                      url: `/pages/order-detail/index?id=${order.id}`
+                    })}
+                  >
+                    <View style={{ position: 'relative' }}>
+                      <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
+                      <View style={{
+                        position: 'absolute',
+                        top: '12rpx',
+                        right: '12rpx',
+                        background: 'rgba(239, 68, 68, 0.9)',
+                        padding: '4rpx 12rpx',
+                        borderRadius: '8rpx',
+                        fontSize: '20rpx',
+                        color: '#FFFFFF',
+                        fontWeight: 600
+                      }}>
+                        已出柜
+                      </View>
+                    </View>
+                    <View className={styles.collectionInfo}>
+                      <Text className={styles.collectionTitle}>{order.title}</Text>
+                      <View className={styles.collectionMeta}>
+                        <Text className={styles.collectionShop}>{order.shopName}</Text>
+                        <Text
+                          style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            restoreToCabinet(order.id);
+                            Taro.showToast({ title: '已恢复', icon: 'success' });
+                          }}
+                        >
+                          恢复 ›
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <EmptyState
+              emoji="📦"
+              title="暂无已出柜"
+              description="移出收藏的手办会在这里展示"
+            />
+          )
         )}
       </View>
     </View>

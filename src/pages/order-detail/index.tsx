@@ -47,7 +47,10 @@ const OrderDetailPage: React.FC = () => {
     updateOrder,
     togglePaymentReminder,
     confirmCollection,
-    removeFromCollection
+    removeFromCollection,
+    abandonCollection,
+    deferPayment,
+    restoreToCabinet
   } = useOrderStore();
 
   const orderId = router.params?.id || '';
@@ -192,6 +195,33 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
+  const handleAbandonCollection = () => {
+    Taro.showModal({
+      title: '放弃入柜',
+      editable: true,
+      placeholderText: '请输入放弃原因（可选）',
+      success: (res) => {
+        if (res.confirm) {
+          abandonCollection(order.id, res.content || '');
+          Taro.showToast({ title: '已放弃', icon: 'none' });
+        }
+      }
+    });
+  };
+
+  const handleRestoreToCabinet = () => {
+    Taro.showModal({
+      title: '恢复入柜',
+      content: '确认将该商品恢复到待入柜状态？',
+      success: (res) => {
+        if (res.confirm) {
+          restoreToCabinet(order.id);
+          Taro.showToast({ title: '已恢复', icon: 'success' });
+        }
+      }
+    });
+  };
+
   const handleToggleReminder = (paymentId: string) => {
     togglePaymentReminder(order.id, paymentId);
   };
@@ -218,12 +248,17 @@ const OrderDetailPage: React.FC = () => {
       <View className={styles.heroCard}>
         <View className={styles.heroTitleRow}>
           <Text className={styles.heroTitle}>{order.title}</Text>
-          <Text
-            className={styles.favIcon}
-            onClick={handleToggleFavorite}
-          >
-            {order.cabinetStatus === 'collected' ? '⭐' : order.cabinetStatus === 'pending_cabinet' ? '📋' : '☆'}
-          </Text>
+          <View className={styles.cabinetStatusWrap} onClick={handleToggleFavorite}>
+            <Text className={styles.favIcon}>
+              {order.cabinetStatus === 'collected' && '⭐'}
+              {order.cabinetStatus === 'pending_cabinet' && '📋'}
+              {order.cabinetStatus === 'removed' && '🚫'}
+              {order.cabinetStatus !== 'collected' && order.cabinetStatus !== 'pending_cabinet' && order.cabinetStatus !== 'removed' && '☆'}
+            </Text>
+            {order.cabinetStatus === 'collected' && <Text className={styles.cabinetStatusText}>已收藏</Text>}
+            {order.cabinetStatus === 'pending_cabinet' && <Text className={styles.cabinetStatusText}>待入柜</Text>}
+            {order.cabinetStatus === 'removed' && <Text className={styles.cabinetStatusText}>已出柜</Text>}
+          </View>
         </View>
         <View className={styles.heroSeriesRow}>
           {order.series && <Text className={styles.seriesChip}>📺 {order.series}</Text>}
@@ -285,6 +320,30 @@ const OrderDetailPage: React.FC = () => {
           </View>
         ))}
       </View>
+
+      {order.deferRecords && order.deferRecords.length > 0 && (
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>⏸️ 暂缓记录</Text>
+          </View>
+          {order.deferRecords.map(record => (
+            <View key={record.id} className={styles.deferRecordItem}>
+              <View className={styles.deferRecordHeader}>
+                <Text className={styles.deferRecordDate}>
+                  {record.createdAt?.slice(0, 10) || '未知日期'}
+                </Text>
+              </View>
+              <Text className={styles.deferRecordReason}>{record.reason}</Text>
+              {record.originalDueDate && (
+                <Text className={styles.deferRecordMeta}>
+                  原到期日: {record.originalDueDate}
+                  {record.newDueDate && ` → 新到期日: ${record.newDueDate}`}
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
 
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
@@ -349,6 +408,23 @@ const OrderDetailPage: React.FC = () => {
             <Text className={styles.infoValue} selectable>
               {order.shippingCarrier ? `${order.shippingCarrier} ` : ''}{order.trackingNo}
             </Text>
+          </View>
+        )}
+        {order.status === 'accepted' && (
+          <View className={styles.infoRow}>
+            <Text className={styles.infoLabel}>柜子状态</Text>
+            <Text className={styles.infoValue}>
+              {order.cabinetStatus === 'pending_cabinet' && '📋 待入柜'}
+              {order.cabinetStatus === 'collected' && '⭐ 已收藏'}
+              {order.cabinetStatus === 'removed' && '🚫 已出柜'}
+              {order.cabinetStatus === 'none' && '—'}
+            </Text>
+          </View>
+        )}
+        {order.cabinetNote && (
+          <View className={styles.infoRow}>
+            <Text className={styles.infoLabel}>柜子备注</Text>
+            <Text className={styles.infoValue}>{order.cabinetNote}</Text>
           </View>
         )}
         <View className={styles.infoRow}>
@@ -468,13 +544,23 @@ const OrderDetailPage: React.FC = () => {
           </Button>
         )}
         {order.status === 'accepted' && order.cabinetStatus === 'pending_cabinet' && (
-          <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleToggleFavorite}>
-            确认收藏
-          </Button>
+          <>
+            <Button className={classnames(styles.btn, styles.btnOutline)} onClick={handleAbandonCollection}>
+              放弃入柜
+            </Button>
+            <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleToggleFavorite}>
+              确认收藏
+            </Button>
+          </>
         )}
         {order.status === 'accepted' && order.cabinetStatus === 'collected' && (
           <Button className={classnames(styles.btn, styles.btnOutline)} onClick={handleToggleFavorite}>
             取消收藏
+          </Button>
+        )}
+        {order.status === 'accepted' && order.cabinetStatus === 'removed' && (
+          <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleRestoreToCabinet}>
+            恢复入柜
           </Button>
         )}
       </View>

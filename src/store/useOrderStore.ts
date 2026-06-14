@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { PreOrder, ShopInfo, OrderStatus, PaymentRecord, MonthlyBudget } from '@/types/order';
+import dayjs from 'dayjs';
+import type { PreOrder, ShopInfo, OrderStatus, PaymentRecord, MonthlyBudget, DeferRecord } from '@/types/order';
 import { mockOrders, mockShops } from '@/data/mockData';
 import { generateId, saveToStorage, storageKeys, loadFromStorage } from '@/utils/storage';
 
@@ -19,15 +20,17 @@ interface OrderStore {
   updatePayment: (orderId: string, paymentId: string, data: Partial<PaymentRecord>) => void;
   markPaymentPaid: (orderId: string, paymentId: string) => void;
   togglePaymentReminder: (orderId: string, paymentId: string) => void;
+  deferPayment: (orderId: string, paymentId: string, reason: string, newDueDate?: string) => void;
 
   markDelayed: (orderId: string, reason: string, newMonth?: string) => void;
   updateTracking: (orderId: string, trackingNo: string, carrier: string) => void;
   markShipped: (orderId: string) => void;
   markDelivered: (orderId: string) => void;
   markAccepted: (orderId: string) => void;
-  addToCabinet: (orderId: string) => void;
   confirmCollection: (orderId: string) => void;
   removeFromCollection: (orderId: string) => void;
+  abandonCollection: (orderId: string, note?: string) => void;
+  restoreToCabinet: (orderId: string) => void;
 
   addShop: (data: Partial<ShopInfo>) => ShopInfo;
   updateShop: (id: string, data: Partial<ShopInfo>) => void;
@@ -39,7 +42,16 @@ interface OrderStore {
   getOrdersByShop: (shopId: string) => PreOrder[];
   getPendingDeliveries: () => PreOrder[];
   getAcceptedOrders: () => PreOrder[];
+  getCollectedOrders: () => PreOrder[];
+  getRemovedOrders: () => PreOrder[];
   getMonthPayments: (month: string) => PreOrder[];
+  getBudgetDecisionList: (month: string) => Array<{
+    order: PreOrder;
+    payment: PaymentRecord;
+    riskScore: number;
+    riskLevel: 'high' | 'medium' | 'low';
+    reason: string;
+  }>;
 }
 
 const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
@@ -95,10 +107,26 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     const savedShops = await loadFromStorage<ShopInfo[]>(storageKeys.SHOPS, []);
     const savedBudgets = await loadFromStorage<MonthlyBudget[]>(storageKeys.BUDGETS, []);
 
-    const migratedOrders = (savedOrders.length > 0 ? savedOrders : mockOrders).map(o => ({
-      ...o,
-      cabinetStatus: o.cabinetStatus || (o.isFavorite ? 'collected' : (o.status === 'accepted' ? 'pending_cabinet' : 'none')) as PreOrder['cabinetStatus']
-    }));
+    const sourceOrders = savedOrders.length > 0 ? savedOrders : mockOrders;
+    const migratedOrders = sourceOrders.map(o => {
+      let cabinetStatus = o.cabinetStatus;
+      if (!cabinetStatus) {
+        if (o.status === 'accepted' && o.isFavorite) {
+          cabinetStatus = 'collected';
+        } else if (o.status === 'accepted') {
+          cabinetStatus = 'pending_cabinet';
+        } else {
+          cabinetStatus = 'none';
+        }
+      }
+      return {
+        ...o,
+        cabinetStatus,
+        isFavorite: cabinetStatus === 'collected',
+        cabinetNote: o.cabinetNote || '',
+        deferRecords: o.deferRecords || []
+      };
+    });
 
     set({
       orders: migratedOrders,
@@ -163,6 +191,8 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       internalNotes: data.internalNotes,
       isFavorite: data.isFavorite || false,
       cabinetStatus: 'none',
+      cabinetNote: '',
+      deferRecords: [],
       createdAt: now,
       updatedAt: now
     };
@@ -318,7 +348,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   addToCabinet: (orderId) => {
     const order = get().orders.find(o => o.id === orderId);
     if (!order) return;
-    if (order.status !== 'accepted' && order.cabinetStatus !== 'pending_cabinet') {
+    if (order.status !== 'accepted') {
       console.warn('[Store] addToCabinet: order not accepted yet', orderId);
       return;
     }
@@ -344,10 +374,57 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   removeFromCollection: (orderId) => {
     const order = get().orders.find(o => o.id === orderId);
     if (!order) return;
+    if (order.cabinetStatus !== 'collected') return;
     get().updateOrder(orderId, {
       isFavorite: false,
-      cabinetStatus: order.status === 'accepted' ? 'pending_cabinet' : 'none'
+      cabinetStatus: 'pending_cabinet'
     });
+  },
+
+  abandonCollection: (orderId, note) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.status !== 'accepted') return;
+    get().updateOrder(orderId, {
+      isFavorite: false,
+      cabinetStatus: 'removed',
+      cabinetNote: note || order.cabinetNote
+    });
+  },
+
+  restoreToCabinet: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.cabinetStatus !== 'removed') return;
+    get().updateOrder(orderId, {
+      cabinetStatus: 'pending_cabinet',
+      cabinetNote: ''
+    });
+  },
+
+  deferPayment: (orderId, paymentId, reason, newDueDate) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    const payment = order.payments.find(p => p.id === paymentId);
+    if (!payment) return;
+    const deferRecord: DeferRecord = {
+      id: generateId(),
+      reason,
+      createdAt: new Date().toISOString(),
+      originalDueDate: payment.dueDate,
+      newDueDate
+    };
+    const patch: any = {};
+    if (newDueDate) {
+      patch.payments = order.payments.map(p =>
+        p.id === paymentId ? { ...p, dueDate: newDueDate } : p
+      );
+    }
+    patch.deferRecords = [...order.deferRecords, deferRecord];
+    patch.internalNotes = order.internalNotes
+      ? `${order.internalNotes}\n\n【暂缓付款】${reason}`
+      : `【暂缓付款】${reason}`;
+    get().updateOrder(orderId, patch);
   },
 
   addShop: (data) => {
@@ -399,10 +476,73 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     o.status === 'shipping' || o.status === 'delivered' || o.status === 'balance_paid'
   ),
   getAcceptedOrders: () => get().orders.filter(o => o.status === 'accepted'),
+  getCollectedOrders: () => get().orders.filter(o => o.cabinetStatus === 'collected'),
+  getRemovedOrders: () => get().orders.filter(o => o.cabinetStatus === 'removed'),
   getMonthPayments: (month) => get().orders.filter(o => {
     const unpaidBalances = o.payments.filter(
       p => p.type === 'balance' && p.status === 'unpaid'
     );
     return unpaidBalances.some(p => p.dueDate?.startsWith(month));
-  })
+  }),
+  getBudgetDecisionList: (month) => {
+    const orders = get().orders;
+    const budgetLimit = get().monthlyBudgets.find(b => b.month === month)?.limit || 0;
+    const shops = get().shops;
+    const list: Array<{
+      order: PreOrder;
+      payment: PaymentRecord;
+      riskScore: number;
+      riskLevel: 'high' | 'medium' | 'low';
+      reason: string;
+    }> = [];
+    let monthTotal = 0;
+    orders.forEach(o => {
+      o.payments.forEach(p => {
+        if (p.status !== 'unpaid' || !p.dueDate?.startsWith(month)) return;
+        monthTotal += p.amount;
+      });
+    });
+
+    orders.forEach(o => {
+      o.payments.forEach(p => {
+        if (p.status !== 'unpaid' || !p.dueDate?.startsWith(month)) return;
+        const shop = shops.find(s => s.id === o.shopId);
+        const advanceDays = shop?.advanceNoticeDays || 30;
+        const daysUntilDue = Math.max(0, dayjs(p.dueDate).diff(dayjs(), 'day'));
+
+        let score = 0;
+        const reasons: string[] = [];
+
+        const amountRatio = budgetLimit > 0 ? p.amount / budgetLimit : 0;
+        if (amountRatio >= 0.3) { score += 40; reasons.push('高金额'); }
+        else if (amountRatio >= 0.15) { score += 20; reasons.push('金额中等'); }
+
+        if (daysUntilDue <= 7) { score += 35; reasons.push('7天内到期'); }
+        else if (daysUntilDue <= 15) { score += 20; reasons.push('半月内到期'); }
+        else if (daysUntilDue <= 30) { score += 10; }
+
+        if (advanceDays >= 30 && amountRatio >= 0.2) { score += 10; reasons.push('店铺补款期短'); }
+
+        if (o.deferRecords && o.deferRecords.length > 0) { score += 15; reasons.push('已暂缓过'); }
+
+        if (budgetLimit > 0 && monthTotal > budgetLimit * 0.8 && amountRatio >= 0.1) {
+          score += 15; reasons.push('推高预算');
+        }
+
+        let riskLevel: 'high' | 'medium' | 'low' = 'low';
+        if (score >= 50) riskLevel = 'high';
+        else if (score >= 25) riskLevel = 'medium';
+
+        list.push({
+          order: o,
+          payment: p,
+          riskScore: Math.min(100, score),
+          riskLevel,
+          reason: reasons.length > 0 ? reasons.join('、') : '低风险'
+        });
+      });
+    });
+
+    return list.sort((a, b) => b.riskScore - a.riskScore);
+  }
 }));

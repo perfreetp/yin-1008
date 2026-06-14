@@ -44,9 +44,23 @@
   margin-right: $spacing-md;
 }
 
+.cabinetStatusWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  flex-shrink: 0;
+}
+
 .favIcon {
   font-size: 40rpx;
   flex-shrink: 0;
+}
+
+.cabinetStatusText {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: $font-weight-medium;
 }
 
 .heroSeriesRow {
@@ -376,6 +390,36 @@
   align-items: center;
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+}
+
+.deferRecordItem {
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.deferRecordHeader {
+  margin-bottom: $spacing-xs;
+}
+
+.deferRecordDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.deferRecordReason {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.5;
+  margin-bottom: $spacing-xs;
+}
+
+.deferRecordMeta {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
 }
 
 .bottomBar {

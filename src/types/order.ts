@@ -10,7 +10,15 @@ export type OrderStatus =
 
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
 
-export type CabinetStatus = 'none' | 'pending_cabinet' | 'collected';
+export type CabinetStatus = 'none' | 'pending_cabinet' | 'collected' | 'removed';
+
+export interface DeferRecord {
+  id: string;
+  reason: string;
+  createdAt: string;
+  originalDueDate?: string;
+  newDueDate?: string;
+}
 
 export interface ShopInfo {
   id: string;
@@ -79,6 +87,8 @@ export interface PreOrder {
   internalNotes?: string;
   isFavorite: boolean;
   cabinetStatus: CabinetStatus;
+  cabinetNote?: string;
+  deferRecords: DeferRecord[];
   createdAt: string;
   updatedAt: string;
 }
