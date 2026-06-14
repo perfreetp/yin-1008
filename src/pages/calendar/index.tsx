@@ -51,6 +51,7 @@ const CalendarPage: React.FC = () => {
           isDelayed: o.isDelayed,
           delayTimes: o.delayTimes,
           status: o.status,
+          hasReminder: p.reminder,
           ...p
         }))
     ).sort((a, b) => {
@@ -216,9 +217,9 @@ const CalendarPage: React.FC = () => {
             </Text>
           </View>
           <View className={classnames(styles.summaryItem, styles.summarySuccess)}>
-            <Text className={styles.summaryLabel}>待付款订单</Text>
+            <Text className={styles.summaryLabel}>提醒中</Text>
             <Text className={styles.summaryValue}>
-              {monthPayments.length}笔
+              {monthPayments.filter(p => p.reminder).length}笔
             </Text>
           </View>
         </View>
@@ -278,10 +279,13 @@ const CalendarPage: React.FC = () => {
                     </View>
                     <View className={styles.timelineMeta}>
                       <Text className={styles.timelineShop}>{p.shopName}</Text>
-                      <Text className={styles.timelineAmount}>
-                        {p.type === 'deposit' ? '订金 ' : '尾款 '}
-                        {formatCurrency(p.amount)}
-                      </Text>
+                      <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx' }}>
+                        {p.reminder && <Text style={{ fontSize: '26rpx' }}>🔔</Text>}
+                        <Text className={styles.timelineAmount}>
+                          {p.type === 'deposit' ? '订金 ' : '尾款 '}
+                          {formatCurrency(p.amount)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>

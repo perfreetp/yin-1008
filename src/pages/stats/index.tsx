@@ -112,6 +112,40 @@ const StatsPage: React.FC = () => {
     });
   }, [orders]);
 
+  const budgetWarning = useMemo(() => {
+    const now = dayjs();
+    const months: {
+      month: string;
+      label: string;
+      pending: number;
+      orders: { id: string; title: string; amount: number; dueDate: string; daysDiff: number }[];
+    }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const m = now.add(i, 'month').format('YYYY-MM');
+      const label = now.add(i, 'month').format('YYYY年M月');
+      const monthOrders: { id: string; title: string; amount: number; dueDate: string; daysDiff: number }[] = [];
+      let pending = 0;
+      orders.forEach(o => {
+        o.payments.forEach(p => {
+          if (p.status === 'unpaid' && p.dueDate?.startsWith(m)) {
+            pending += p.amount;
+            monthOrders.push({
+              id: o.id,
+              title: o.title,
+              amount: p.amount,
+              dueDate: p.dueDate,
+              daysDiff: dayjs(p.dueDate).diff(now, 'day')
+            });
+          }
+        });
+      });
+      monthOrders.sort((a, b) => a.daysDiff - b.daysDiff);
+      months.push({ month: m, label, pending, orders: monthOrders });
+    }
+    const maxPending = Math.max(...months.map(m => m.pending), 1);
+    return { months, maxPending };
+  }, [orders]);
+
   const progressPercent = overview.totalBudget > 0
     ? Math.round((overview.totalPaid / overview.totalBudget) * 100)
     : 0;
@@ -228,6 +262,124 @@ const StatsPage: React.FC = () => {
               <Text style={{ fontSize: '22rpx', color: '#4B5563' }}>实际支付</Text>
             </View>
           </View>
+        </View>
+      </View>
+
+      <View className={styles.section}>
+        <View className={styles.sectionHeader}>
+          <Text className={styles.sectionTitle}>⚠️ 月度预算预警</Text>
+        </View>
+        <View style={{
+          background: '#FFFFFF',
+          borderRadius: '16rpx',
+          boxShadow: '0 2rpx 12rpx rgba(0,0,0,0.08)',
+          overflow: 'hidden'
+        }}>
+          {budgetWarning.months.filter(m => m.pending > 0).length > 0 ? (
+            budgetWarning.months.filter(m => m.pending > 0).map((m, mIdx) => {
+              const isHighest = m.pending === budgetWarning.maxPending;
+              const barPercent = (m.pending / budgetWarning.maxPending) * 100;
+              return (
+                <View
+                  key={m.month}
+                  style={{
+                    padding: '24rpx 32rpx',
+                    borderBottom: mIdx < budgetWarning.months.filter(m2 => m2.pending > 0).length - 1 ? '1rpx solid #F2F3F5' : 'none'
+                  }}
+                >
+                  <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16rpx' }}>
+                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
+                      <Text style={{ fontSize: '28rpx', fontWeight: 600, color: isHighest ? '#EF4444' : '#1E1B4B' }}>
+                        {m.label}
+                      </Text>
+                      {isHighest && (
+                        <View style={{
+                          background: '#FEE2E2',
+                          padding: '4rpx 14rpx',
+                          borderRadius: '8rpx',
+                          fontSize: '22rpx',
+                          color: '#EF4444',
+                          fontWeight: 600
+                        }}>
+                          最高
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{
+                      fontSize: '32rpx',
+                      fontWeight: 700,
+                      color: isHighest ? '#EF4444' : '#F59E0B'
+                    }}>
+                      ¥{m.pending.toFixed(0)}
+                    </Text>
+                  </View>
+                  <View style={{
+                    height: '12rpx',
+                    background: '#F2F3F5',
+                    borderRadius: '999rpx',
+                    overflow: 'hidden',
+                    marginBottom: '16rpx'
+                  }}>
+                    <View style={{
+                      width: `${barPercent}%`,
+                      height: '100%',
+                      background: isHighest
+                        ? 'linear-gradient(90deg, #EF4444, #F87171)'
+                        : 'linear-gradient(90deg, #F59E0B, #FCD34D)',
+                      borderRadius: '999rpx'
+                    }} />
+                  </View>
+                  {m.orders.map((o, oIdx) => (
+                    <View
+                      key={`${o.id}-${oIdx}`}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8rpx 0',
+                        opacity: 0.9
+                      }}
+                      onClick={() => Taro.navigateTo({
+                        url: `/pages/order-detail/index?id=${o.id}`
+                      })}
+                    >
+                      <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx', flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: '24rpx', color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          {o.title}
+                        </Text>
+                        {o.daysDiff <= 7 && o.daysDiff >= 0 && (
+                          <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
+                            {o.daysDiff}天后
+                          </Text>
+                        )}
+                        {o.daysDiff < 0 && (
+                          <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
+                            已超期
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={{
+                        fontSize: '26rpx',
+                        color: '#F59E0B',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                        marginLeft: '16rpx'
+                      }}>
+                        ¥{o.amount.toFixed(0)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })
+          ) : (
+            <View style={{ padding: '48rpx 32rpx', textAlign: 'center' }}>
+              <Text style={{ fontSize: '48rpx' }}>🎉</Text>
+              <Text style={{ display: 'block', fontSize: '26rpx', color: '#9CA3AF', marginTop: '12rpx' }}>
+                未来6个月无待付款，预算安全！
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 

@@ -191,10 +191,11 @@ const InspectionPage: React.FC = () => {
 
   const doComplete = () => {
     if (!order) return;
-    const patch: any = {};
     if (!order.deliveredAt) {
-      patch.deliveredAt = new Date().toISOString().split('T')[0];
+      Taro.showToast({ title: '请先确认签收', icon: 'none' });
+      return;
     }
+    const patch: any = {};
     patch.acceptedAt = new Date().toISOString().split('T')[0];
     if (notes.trim()) {
       patch.internalNotes = order.internalNotes
@@ -226,6 +227,35 @@ const InspectionPage: React.FC = () => {
   }
 
   const isAccepted = !!order.acceptedAt;
+  const isDelivered = order.status === 'delivered' || !!order.deliveredAt;
+
+  if (!isDelivered && !isAccepted) {
+    const statusLabel: Record<string, string> = {
+      deposit_paid: '已付订金',
+      waiting_balance: '待补款',
+      balance_paid: '已补款',
+      shipping: '运输中',
+      delayed: '已延期',
+      cancelled: '已取消'
+    };
+    return (
+      <View className={styles.page} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <Text style={{ fontSize: '96rpx', marginBottom: '24rpx' }}>🚫</Text>
+        <Text style={{ fontSize: '36rpx', fontWeight: 700, color: '#1E1B4B', marginBottom: '16rpx' }}>
+          无法验收
+        </Text>
+        <Text style={{ fontSize: '28rpx', color: '#6B7280', textAlign: 'center', lineHeight: 1.6 }}>
+          当前订单状态为「{statusLabel[order.status] || order.status}」{'\n'}
+          只有已签收的订单才能进行验收
+        </Text>
+        <Text style={{ fontSize: '26rpx', color: '#8B5CF6', marginTop: '32rpx', fontWeight: 600 }}
+          onClick={() => Taro.navigateBack()}
+        >
+          ← 返回订单详情
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView scrollY className={styles.page}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
+import { View, Text, Image, ScrollView, Button, Switch } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
@@ -44,7 +44,8 @@ const OrderDetailPage: React.FC = () => {
     markShipped,
     markDelayed,
     updateTracking,
-    updateOrder
+    updateOrder,
+    togglePaymentReminder
   } = useOrderStore();
 
   const orderId = router.params?.id || '';
@@ -179,6 +180,27 @@ const OrderDetailPage: React.FC = () => {
     });
   };
 
+  const handleToggleReminder = (paymentId: string) => {
+    togglePaymentReminder(order.id, paymentId);
+  };
+
+  const getNextAction = () => {
+    if (!order) return null;
+    if (order.status === 'waiting_balance' || order.status === 'delayed') {
+      return { label: '查看待付款', action: () => {} };
+    }
+    if (order.status === 'balance_paid') {
+      return { label: '录入发货', action: handleMarkShipped };
+    }
+    if (order.status === 'shipping') {
+      return { label: '确认签收', action: handleMarkDelivered };
+    }
+    if (order.status === 'delivered') {
+      return { label: '开箱验收', action: handleGoInspect };
+    }
+    return null;
+  };
+
   return (
     <ScrollView scrollY className={styles.page}>
       <View className={styles.heroCard}>
@@ -227,7 +249,16 @@ const OrderDetailPage: React.FC = () => {
                   ? `支付时间: ${payment.paidAt || '—'}`
                   : `到期时间: ${payment.dueDate || '待定'}`}
               </Text>
-              {payment.reminder && payment.status === 'unpaid' && <Text>🔔 已开启提醒</Text>}
+            </View>
+            <View className={styles.reminderRow}>
+              <Text className={styles.reminderLabel}>
+                {payment.reminder ? '🔔 提醒已开启' : '🔕 提醒已关闭'}
+              </Text>
+              <Switch
+                checked={payment.reminder}
+                onChange={() => handleToggleReminder(payment.id)}
+                color="#8B5CF6"
+              />
             </View>
             {payment.status === 'unpaid' && (
               <View className={styles.paymentAction}>
@@ -424,9 +455,9 @@ const OrderDetailPage: React.FC = () => {
             开箱验收
           </Button>
         )}
-        {!['balance_paid', 'shipping', 'delivered'].includes(order.status) && (
-          <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleGoInspect}>
-            验收记录
+        {order.status === 'accepted' && (
+          <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleToggleFavorite}>
+            {order.isFavorite ? '取消收藏' : '加入收藏'}
           </Button>
         )}
       </View>

@@ -17,6 +17,7 @@ interface OrderStore {
   addPayment: (orderId: string, payment: Partial<PaymentRecord>) => void;
   updatePayment: (orderId: string, paymentId: string, data: Partial<PaymentRecord>) => void;
   markPaymentPaid: (orderId: string, paymentId: string) => void;
+  togglePaymentReminder: (orderId: string, paymentId: string) => void;
 
   markDelayed: (orderId: string, reason: string, newMonth?: string) => void;
   updateTracking: (orderId: string, trackingNo: string, carrier: string) => void;
@@ -209,6 +210,16 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     });
   },
 
+  togglePaymentReminder: (orderId, paymentId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    const payment = order.payments.find(p => p.id === paymentId);
+    if (!payment) return;
+    get().updatePayment(orderId, paymentId, {
+      reminder: !payment.reminder
+    });
+  },
+
   markDelayed: (orderId, reason, newMonth) => {
     const orders = get().orders.map(o => {
       if (o.id !== orderId) return o;
@@ -248,6 +259,15 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   },
 
   markAccepted: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) {
+      console.warn('[Store] markAccepted: order not found', orderId);
+      return;
+    }
+    if (!order.deliveredAt) {
+      console.warn('[Store] markAccepted: order not delivered yet', orderId);
+      return;
+    }
     get().updateOrder(orderId, {
       acceptedAt: new Date().toISOString().split('T')[0]
     });
@@ -259,7 +279,9 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       name: data.name || '新店铺',
       platform: data.platform || '',
       contact: data.contact,
-      notes: data.notes
+      notes: data.notes,
+      balanceRule: data.balanceRule,
+      advanceNoticeDays: data.advanceNoticeDays
     };
     const shops = [...get().shops, newShop];
     set({ shops });

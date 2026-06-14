@@ -16,6 +16,8 @@ export interface ShopInfo {
   platform: string;
   contact?: string;
   notes?: string;
+  balanceRule?: string;
+  advanceNoticeDays?: number;
 }
 
 export interface InspectionIssue {

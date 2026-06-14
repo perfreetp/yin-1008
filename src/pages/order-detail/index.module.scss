@@ -186,6 +186,22 @@
   justify-content: space-between;
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  margin-bottom: $spacing-sm;
+}
+
+.reminderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  border-top: 1rpx solid $color-divider;
+  margin-top: $spacing-sm;
+}
+
+.reminderLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
 }
 
 .paymentAction {
@@ -278,15 +294,11 @@
 }
 
 .photoItem {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 1;
   border-radius: $radius-md;
   background: $color-bg-hover;
-  overflow: position: relative;
-}
-
-.photoItem {
-  position: relative;
-  overflow: hidden;
 }
 
 .photoAdd {

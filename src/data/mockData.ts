@@ -6,35 +6,45 @@ export const mockShops: ShopInfo[] = [
     name: '甘楽屋',
     platform: '淘宝',
     contact: '旺旺客服',
-    notes: '老牌手办店，信誉良好，一般提前1月通知补款'
+    notes: '老牌手办店，信誉良好，一般提前1月通知补款',
+    balanceRule: '到货后7天内补齐尾款，超期可能取消订单',
+    advanceNoticeDays: 30
   },
   {
     id: 'shop_002',
     name: '鹤屋通贩',
     platform: '淘宝',
     contact: '客服QQ群',
-    notes: '常有限定特典，补款通知及时'
+    notes: '常有限定特典，补款通知及时',
+    balanceRule: '到货通知后5天内完成补款，可申请延期3天',
+    advanceNoticeDays: 14
   },
   {
     id: 'shop_003',
     name: '魔法集市',
     platform: '自营APP',
     contact: 'APP内客服',
-    notes: '日版正品，直邮EMS，物流较慢'
+    notes: '日版正品，直邮EMS，物流较慢',
+    balanceRule: '到货后10天内补尾款，国际物流需额外等待',
+    advanceNoticeDays: 21
   },
   {
     id: 'shop_004',
     name: 'Amiami中国',
     platform: '官网',
     contact: '邮件客服',
-    notes: '可用支付宝，发货包装好'
+    notes: '可用支付宝，发货包装好',
+    balanceRule: '发货前需完成尾款支付，否则不予发货',
+    advanceNoticeDays: 7
   },
   {
     id: 'shop_005',
     name: '手办童萌会',
     platform: '淘宝',
     contact: '旺旺客服',
-    notes: '现货速度快，特典齐全'
+    notes: '现货速度快，特典齐全',
+    balanceRule: '现货下单即付全款，预订到货后3天补尾款',
+    advanceNoticeDays: 7
   }
 ];
 
