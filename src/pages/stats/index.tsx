@@ -36,7 +36,7 @@ const COVER_MAP: Record<string, string> = {
 };
 
 const StatsPage: React.FC = () => {
-  const { orders, initStore, initialized, monthlyBudgets, setMonthlyBudget, confirmCollection, removeFromCollection, abandonCollection, restoreToCabinet, deferPayment, togglePaymentReminder, getBudgetDecisionList } = useOrderStore();
+  const { orders, initStore, initialized, monthlyBudgets, setMonthlyBudget, confirmCollection, removeFromCollection, abandonCollection, restoreToCabinet, deferPayment, togglePaymentReminder, disablePaymentReminder, getBudgetDecisionList } = useOrderStore();
   const [cabinetTab, setCabinetTab] = useState<'collected' | 'pending' | 'removed'>('collected');
   const [expandedDecisionMonth, setExpandedDecisionMonth] = useState<string | null>(null);
 
@@ -452,119 +452,210 @@ const StatsPage: React.FC = () => {
                       </View>
                       {isDecisionExpanded && (
                         <View style={{ marginTop: '16rpx' }}>
-                          {decisionList.map((item, idx) => (
-                            <View
-                              key={item.payment.id}
-                              style={{
-                                background: '#FFFFFF',
-                                borderRadius: '8rpx',
-                                padding: '12rpx',
-                                marginBottom: idx < decisionList.length - 1 ? '8rpx' : 0
-                              }}
-                            >
-                              <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx', marginBottom: '8rpx' }}>
-                                <View style={{
-                                  padding: '2rpx 10rpx',
-                                  borderRadius: '6rpx',
-                                  fontSize: '20rpx',
-                                  fontWeight: 600,
-                                  background: item.riskLevel === 'high' ? '#FEE2E2' : item.riskLevel === 'medium' ? '#FEF3C7' : '#D1FAE5',
-                                  color: item.riskLevel === 'high' ? '#EF4444' : item.riskLevel === 'medium' ? '#D97706' : '#059669'
-                                }}>
-                                  {item.riskLevel === 'high' ? '高' : item.riskLevel === 'medium' ? '中' : '低'}
+                          {decisionList.map((item, idx) => {
+                            const reasonTags = item.reason ? item.reason.split('、').filter(Boolean) : [];
+                            const riskBarColor = item.riskLevel === 'high'
+                              ? 'linear-gradient(90deg, #EF4444, #F87171)'
+                              : item.riskLevel === 'medium'
+                                ? 'linear-gradient(90deg, #F59E0B, #FCD34D)'
+                                : 'linear-gradient(90deg, #10B981, #34D399)';
+                            const riskTextColor = item.riskLevel === 'high'
+                              ? '#EF4444'
+                              : item.riskLevel === 'medium'
+                                ? '#D97706'
+                                : '#059669';
+                            const isReminderOn = item.payment.reminder;
+                            return (
+                              <View
+                                key={item.payment.id}
+                                style={{
+                                  background: '#FFFFFF',
+                                  borderRadius: '12rpx',
+                                  padding: '16rpx',
+                                  marginBottom: idx < decisionList.length - 1 ? '12rpx' : 0,
+                                  boxShadow: '0 2rpx 8rpx rgba(0,0,0,0.04)'
+                                }}
+                              >
+                                <View style={{ display: 'flex', alignItems: 'center', gap: '10rpx', marginBottom: '12rpx' }}>
+                                  <View style={{
+                                    padding: '4rpx 12rpx',
+                                    borderRadius: '6rpx',
+                                    fontSize: '20rpx',
+                                    fontWeight: 600,
+                                    background: item.riskLevel === 'high' ? '#FEE2E2' : item.riskLevel === 'medium' ? '#FEF3C7' : '#D1FAE5',
+                                    color: riskTextColor
+                                  }}>
+                                    {item.riskLevel === 'high' ? '高风险' : item.riskLevel === 'medium' ? '中风险' : '低风险'}
+                                  </View>
+                                  <Text
+                                    style={{ fontSize: '26rpx', fontWeight: 600, color: '#1E1B4B', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                    numberOfLines={1}
+                                  >
+                                    {item.order.title}
+                                  </Text>
+                                  <Text style={{ fontSize: '26rpx', fontWeight: 700, color: '#F59E0B', flexShrink: 0 }}>
+                                    ¥{item.payment.amount.toFixed(0)}
+                                  </Text>
                                 </View>
-                                <Text style={{ fontSize: '24rpx', fontWeight: 600, color: '#1E1B4B', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {item.order.title}
-                                </Text>
-                                <Text style={{ fontSize: '24rpx', fontWeight: 700, color: '#F59E0B', flexShrink: 0 }}>
-                                  ¥{item.payment.amount.toFixed(0)}
-                                </Text>
-                              </View>
-                              <Text style={{ fontSize: '20rpx', color: '#6B7280', marginBottom: '12rpx' }}>
-                                {item.reason}
-                              </Text>
-                              <View style={{ display: 'flex', gap: '8rpx' }}>
-                                <Text
-                                  style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '8rpx 0',
-                                    fontSize: '22rpx',
-                                    fontWeight: 600,
-                                    color: '#8B5CF6',
-                                    background: 'rgba(139,92,246,0.1)',
-                                    borderRadius: '6rpx'
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    Taro.showModal({
-                                      title: '延期付款',
-                                      editable: true,
-                                      placeholderText: '请输入新的到期日期（YYYY-MM-DD）',
-                                      content: item.payment.dueDate || '',
-                                      success: (res) => {
-                                        if (res.confirm && res.content?.trim()) {
-                                          const newDate = res.content.trim();
-                                          deferPayment(item.order.id, item.payment.id, '延期付款', newDate);
-                                          Taro.showToast({ title: '已延期', icon: 'success' });
+
+                                <View style={{ marginBottom: '12rpx' }}>
+                                  <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6rpx' }}>
+                                    <Text style={{ fontSize: '20rpx', color: '#6B7280', fontWeight: 500 }}>
+                                      风险评分
+                                    </Text>
+                                    <Text style={{ fontSize: '20rpx', fontWeight: 700, color: riskTextColor }}>
+                                      {item.riskScore}分
+                                    </Text>
+                                  </View>
+                                  <View style={{
+                                    height: '10rpx',
+                                    background: '#F2F3F5',
+                                    borderRadius: '999rpx',
+                                    overflow: 'hidden'
+                                  }}>
+                                    <View style={{
+                                      width: `${item.riskScore}%`,
+                                      height: '100%',
+                                      background: riskBarColor,
+                                      borderRadius: '999rpx',
+                                      transition: 'width 0.3s'
+                                    }} />
+                                  </View>
+                                </View>
+
+                                {reasonTags.length > 0 && (
+                                  <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8rpx', marginBottom: '14rpx' }}>
+                                    {reasonTags.map((tag, tagIdx) => (
+                                      <View
+                                        key={tagIdx}
+                                        style={{
+                                          padding: '4rpx 12rpx',
+                                          borderRadius: '999rpx',
+                                          fontSize: '20rpx',
+                                          background: '#F3F4F6',
+                                          color: '#4B5563',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        {tag}
+                                      </View>
+                                    ))}
+                                  </View>
+                                )}
+
+                                <View style={{ display: 'flex', gap: '10rpx', marginBottom: '12rpx' }}>
+                                  <Text
+                                    style={{
+                                      flex: 1,
+                                      textAlign: 'center',
+                                      padding: '10rpx 0',
+                                      fontSize: '24rpx',
+                                      fontWeight: 600,
+                                      color: '#FFFFFF',
+                                      background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
+                                      borderRadius: '8rpx',
+                                      boxShadow: '0 2rpx 8rpx rgba(139,92,246,0.3)'
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      Taro.showModal({
+                                        title: '延期付款',
+                                        editable: true,
+                                        placeholderText: '请输入新的到期日期（YYYY-MM-DD）',
+                                        content: item.payment.dueDate || '',
+                                        success: (res) => {
+                                          if (res.confirm && res.content?.trim()) {
+                                            const newDate = res.content.trim();
+                                            deferPayment(item.order.id, item.payment.id, '延期付款', newDate);
+                                            Taro.showToast({ title: '已延期', icon: 'success' });
+                                          }
                                         }
+                                      });
+                                    }}
+                                  >
+                                    延期
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      flex: 1,
+                                      textAlign: 'center',
+                                      padding: '10rpx 0',
+                                      fontSize: '24rpx',
+                                      fontWeight: 600,
+                                      color: isReminderOn ? '#4B5563' : '#9CA3AF',
+                                      background: isReminderOn ? '#F3F4F6' : '#F9FAFB',
+                                      borderRadius: '8rpx',
+                                      opacity: isReminderOn ? 1 : 0.6
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isReminderOn) {
+                                        Taro.showToast({ title: '提醒已关闭', icon: 'none' });
+                                        return;
                                       }
-                                    });
-                                  }}
-                                >
-                                  延期
-                                </Text>
-                                <Text
-                                  style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '8rpx 0',
-                                    fontSize: '22rpx',
-                                    fontWeight: 600,
-                                    color: '#6B7280',
-                                    background: '#F3F4F6',
-                                    borderRadius: '6rpx'
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    togglePaymentReminder(item.order.id, item.payment.id);
-                                    Taro.showToast({ title: '已关闭提醒', icon: 'none' });
-                                  }}
-                                >
-                                  关提醒
-                                </Text>
-                                <Text
-                                  style={{
-                                    flex: 1,
-                                    textAlign: 'center',
-                                    padding: '8rpx 0',
-                                    fontSize: '22rpx',
-                                    fontWeight: 600,
-                                    color: '#F59E0B',
-                                    background: 'rgba(245,158,11,0.1)',
-                                    borderRadius: '6rpx'
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    Taro.showModal({
-                                      title: '暂缓付款',
-                                      editable: true,
-                                      placeholderText: '请输入暂缓原因',
-                                      success: (res) => {
-                                        if (res.confirm && res.content?.trim()) {
-                                          const reason = res.content.trim();
-                                          deferPayment(item.order.id, item.payment.id, reason);
-                                          Taro.showToast({ title: '已暂缓', icon: 'success' });
+                                      disablePaymentReminder(item.order.id, item.payment.id);
+                                      Taro.showToast({ title: '已关闭提醒', icon: 'none' });
+                                    }}
+                                  >
+                                    关提醒
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      flex: 1,
+                                      textAlign: 'center',
+                                      padding: '10rpx 0',
+                                      fontSize: '24rpx',
+                                      fontWeight: 600,
+                                      color: '#92400E',
+                                      background: 'linear-gradient(135deg, #FCD34D, #FBBF24)',
+                                      borderRadius: '8rpx',
+                                      boxShadow: '0 2rpx 8rpx rgba(245,158,11,0.3)'
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      Taro.showModal({
+                                        title: '暂缓付款',
+                                        editable: true,
+                                        placeholderText: '请输入暂缓原因',
+                                        success: (res) => {
+                                          if (res.confirm && res.content?.trim()) {
+                                            const reason = res.content.trim();
+                                            deferPayment(item.order.id, item.payment.id, reason);
+                                            Taro.showToast({ title: '已暂缓', icon: 'success' });
+                                          }
                                         }
-                                      }
-                                    });
-                                  }}
-                                >
-                                  暂缓
-                                </Text>
+                                      });
+                                    }}
+                                  >
+                                    暂缓
+                                  </Text>
+                                </View>
+
+                                <View style={{
+                                  display: 'flex',
+                                  justifyContent: 'center',
+                                  paddingTop: '10rpx',
+                                  borderTop: '1rpx solid #F2F3F5'
+                                }}>
+                                  <Text
+                                    style={{
+                                      fontSize: '22rpx',
+                                      color: '#8B5CF6',
+                                      fontWeight: 500
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      Taro.navigateTo({
+                                        url: `/pages/order-detail/index?id=${item.order.id}`
+                                      });
+                                    }}
+                                  >
+                                    跳转到订单 →
+                                  </Text>
+                                </View>
                               </View>
-                            </View>
-                          ))}
+                            );
+                          })}
                         </View>
                       )}
                     </View>

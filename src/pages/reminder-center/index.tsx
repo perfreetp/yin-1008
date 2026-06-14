@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Switch } from '@tarojs/components';
+import { View, Text, ScrollView, Switch, Input } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import dayjs from 'dayjs';
 import styles from './index.module.scss';
@@ -9,20 +9,129 @@ import EmptyState from '@/components/EmptyState';
 import { formatCurrency } from '@/utils/storage';
 
 type RiskLevel = 'high' | 'medium' | 'low';
-type FilterRisk = 'all' | 'high' | 'medium';
+type FilterRisk = 'all' | 'high' | 'medium' | 'low';
 
-const getRiskLevel = (amount: number, daysDiff: number): RiskLevel => {
-  if (amount > 500 && daysDiff <= 15) return 'high';
-  if (amount > 200 && daysDiff <= 30) return 'medium';
-  return 'low';
+interface RiskCriteria {
+  amountScore: number;
+  timeScore: number;
+  budgetScore: number;
+  totalScore: number;
+  riskLevel: RiskLevel;
+  reasons: string[];
+  isBudgetTight: boolean;
+}
+
+interface ReminderItem {
+  orderId: string;
+  orderTitle: string;
+  shopId: string;
+  shopName: string;
+  paymentId: string;
+  type: string;
+  amount: number;
+  dueDate: string;
+  reminder: boolean;
+  daysDiff: number;
+  riskLevel: RiskLevel;
+  riskCriteria: RiskCriteria;
+  month: string;
+  isBudgetTight: boolean;
+}
+
+const calculateRiskCriteria = (
+  amount: number,
+  daysDiff: number,
+  monthTotal: number,
+  budgetLimit: number | undefined
+): RiskCriteria => {
+  let amountScore = 0;
+  let timeScore = 0;
+  let budgetScore = 0;
+  const reasons: string[] = [];
+
+  if (amount >= 500) {
+    amountScore = 40;
+    reasons.push('高金额');
+  } else if (amount >= 200) {
+    amountScore = 20;
+    reasons.push('金额中等');
+  } else if (amount >= 100) {
+    amountScore = 10;
+  }
+
+  if (daysDiff <= 7) {
+    timeScore = 35;
+    reasons.push('7天内到期');
+  } else if (daysDiff <= 15) {
+    timeScore = 25;
+    reasons.push('半月内到期');
+  } else if (daysDiff <= 30) {
+    timeScore = 10;
+  }
+
+  const hasBudget = budgetLimit !== undefined && budgetLimit > 0;
+  const budgetRatio = hasBudget ? monthTotal / budgetLimit! : 0;
+  const isBudgetTight = hasBudget && budgetRatio > 0.8;
+
+  if (isBudgetTight) {
+    if (amount >= 300) {
+      budgetScore = 25;
+      reasons.push('预算紧张+高金额');
+    } else if (amount >= 100) {
+      budgetScore = 15;
+      reasons.push('预算紧张');
+    } else {
+      budgetScore = 10;
+    }
+  } else if (!hasBudget && amount >= 800) {
+    budgetScore = 20;
+    reasons.push('无预算+超高金额');
+  }
+
+  const totalScore = Math.min(100, amountScore + timeScore + budgetScore);
+
+  let riskLevel: RiskLevel = 'low';
+  if (totalScore >= 50) {
+    riskLevel = 'high';
+  } else if (totalScore >= 25) {
+    riskLevel = 'medium';
+  }
+
+  if (reasons.length === 0) {
+    reasons.push('低风险');
+  }
+
+  return {
+    amountScore,
+    timeScore,
+    budgetScore,
+    totalScore,
+    riskLevel,
+    reasons,
+    isBudgetTight
+  };
 };
 
 const ReminderCenterPage: React.FC = () => {
-  const { orders, shops, monthlyBudgets, initStore, initialized, togglePaymentReminder, deferPayment, markPaymentPaid } = useOrderStore();
+  const {
+    orders,
+    shops,
+    monthlyBudgets,
+    initStore,
+    initialized,
+    togglePaymentReminder,
+    disablePaymentReminder,
+    deferPayment,
+    markPaymentPaid
+  } = useOrderStore();
+
   const [filterShop, setFilterShop] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterRisk, setFilterRisk] = useState<FilterRisk>('all');
   const [onlyReminder, setOnlyReminder] = useState(false);
+  const [showDeferModal, setShowDeferModal] = useState(false);
+  const [deferReason, setDeferReason] = useState('');
+  const [currentItem, setCurrentItem] = useState<ReminderItem | null>(null);
 
   useEffect(() => {
     if (!initialized) initStore();
@@ -32,16 +141,31 @@ const ReminderCenterPage: React.FC = () => {
     if (!initialized) initStore();
   });
 
-  const allReminders = useMemo(() => {
+  const monthBudgetMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthlyBudgets.forEach(b => {
+      map[b.month] = b.limit;
+    });
+    return map;
+  }, [monthlyBudgets]);
+
+  const allReminders = useMemo((): ReminderItem[] => {
     const now = dayjs();
     const limit = now.add(30, 'day');
-    return orders.flatMap(o =>
+
+    const monthTotals: Record<string, number> = {};
+    const tempReminders: Array<Omit<ReminderItem, 'riskCriteria' | 'riskLevel' | 'isBudgetTight'> & { month: string }> = [];
+
+    orders.forEach(o => {
       o.payments
         .filter(p => p.status === 'unpaid' && p.dueDate && dayjs(p.dueDate).isBefore(limit))
-        .map(p => {
+        .forEach(p => {
+          const month = p.dueDate!.slice(0, 7);
+          if (!monthTotals[month]) monthTotals[month] = 0;
+          monthTotals[month] += p.amount;
+
           const daysDiff = dayjs(p.dueDate).diff(now, 'day');
-          const riskLevel = getRiskLevel(p.amount, daysDiff);
-          return {
+          tempReminders.push({
             orderId: o.id,
             orderTitle: o.title,
             shopId: o.shopId,
@@ -52,20 +176,25 @@ const ReminderCenterPage: React.FC = () => {
             dueDate: p.dueDate!,
             reminder: p.reminder,
             daysDiff,
-            riskLevel,
-            month: p.dueDate!.slice(0, 7)
-          };
-        })
-    ).sort((a, b) => a.daysDiff - b.daysDiff);
-  }, [orders]);
-
-  const monthBudgetMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    monthlyBudgets.forEach(b => {
-      map[b.month] = b.limit;
+            month
+          });
+        });
     });
-    return map;
-  }, [monthlyBudgets]);
+
+    const result: ReminderItem[] = tempReminders.map(item => {
+      const budgetLimit = monthBudgetMap[item.month];
+      const monthTotal = monthTotals[item.month] || 0;
+      const criteria = calculateRiskCriteria(item.amount, item.daysDiff, monthTotal, budgetLimit);
+      return {
+        ...item,
+        riskLevel: criteria.riskLevel,
+        riskCriteria: criteria,
+        isBudgetTight: criteria.isBudgetTight
+      };
+    });
+
+    return result.sort((a, b) => b.riskCriteria.totalScore - a.riskCriteria.totalScore || a.daysDiff - b.daysDiff);
+  }, [orders, monthBudgetMap]);
 
   const monthTotalMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -76,10 +205,10 @@ const ReminderCenterPage: React.FC = () => {
     return map;
   }, [allReminders]);
 
-  const isMonthOverBudget = (month: string): boolean => {
+  const isMonthBudgetTight = (month: string): boolean => {
     const limit = monthBudgetMap[month];
     const total = monthTotalMap[month] || 0;
-    return limit > 0 && total > limit;
+    return limit > 0 && total > limit * 0.8;
   };
 
   const availableShops = useMemo(() => {
@@ -131,10 +260,10 @@ const ReminderCenterPage: React.FC = () => {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [nonHighRiskReminders]);
 
-  const handleShowActions = (item: typeof allReminders[0], e: React.MouseEvent) => {
+  const handleShowActions = (item: ReminderItem, e: React.MouseEvent) => {
     e.stopPropagation();
     Taro.showActionSheet({
-      itemList: ['标记已付', '延期30天', '自定义延期日期', '关闭提醒'],
+      itemList: ['标记已付', '暂缓付款', '延期30天', '自定义延期日期', '关闭提醒'],
       success: (res) => {
         switch (res.tapIndex) {
           case 0:
@@ -150,6 +279,11 @@ const ReminderCenterPage: React.FC = () => {
             });
             break;
           case 1:
+            setCurrentItem(item);
+            setDeferReason('');
+            setShowDeferModal(true);
+            break;
+          case 2:
             const newDate30 = dayjs(item.dueDate).add(30, 'day').format('YYYY-MM-DD');
             Taro.showModal({
               title: '延期30天',
@@ -162,7 +296,7 @@ const ReminderCenterPage: React.FC = () => {
               }
             });
             break;
-          case 2:
+          case 3:
             Taro.showModal({
               title: '自定义延期日期',
               editable: true,
@@ -182,13 +316,17 @@ const ReminderCenterPage: React.FC = () => {
               }
             });
             break;
-          case 3:
+          case 4:
             Taro.showModal({
               title: '关闭提醒',
               content: `确定关闭 "${item.orderTitle}" 的付款提醒？`,
               success: (r) => {
                 if (r.confirm) {
-                  togglePaymentReminder(item.orderId, item.paymentId);
+                  if (disablePaymentReminder) {
+                    disablePaymentReminder(item.orderId, item.paymentId);
+                  } else if (item.reminder) {
+                    togglePaymentReminder(item.orderId, item.paymentId);
+                  }
                   Taro.showToast({ title: '已关闭', icon: 'success' });
                 }
               }
@@ -197,6 +335,25 @@ const ReminderCenterPage: React.FC = () => {
         }
       }
     });
+  };
+
+  const handleConfirmDefer = () => {
+    if (!currentItem) return;
+    if (!deferReason.trim()) {
+      Taro.showToast({ title: '请输入暂缓原因', icon: 'none' });
+      return;
+    }
+    deferPayment(currentItem.orderId, currentItem.paymentId, deferReason.trim());
+    Taro.showToast({ title: '已暂缓', icon: 'success' });
+    setShowDeferModal(false);
+    setCurrentItem(null);
+    setDeferReason('');
+  };
+
+  const handleCancelDefer = () => {
+    setShowDeferModal(false);
+    setCurrentItem(null);
+    setDeferReason('');
   };
 
   const handleJumpToHighRisk = () => {
@@ -220,8 +377,7 @@ const ReminderCenterPage: React.FC = () => {
     );
   };
 
-  const renderReminderItem = (item: typeof allReminders[0]) => {
-    const overBudget = isMonthOverBudget(item.month);
+  const renderReminderItem = (item: ReminderItem) => {
     return (
       <View
         key={`${item.orderId}-${item.paymentId}`}
@@ -244,7 +400,7 @@ const ReminderCenterPage: React.FC = () => {
               {item.shopName} · {item.type === 'deposit' ? '订金' : '尾款'}
               {item.daysDiff >= 0 ? ` · 还有${item.daysDiff}天` : ` · 超期${-item.daysDiff}天`}
             </Text>
-            {overBudget && (
+            {item.isBudgetTight && (
               <View className={styles.budgetWarning}>
                 <Text className={styles.budgetWarningText}>⚠️ 预算紧张</Text>
               </View>
@@ -263,7 +419,7 @@ const ReminderCenterPage: React.FC = () => {
               className={styles.deferBtn}
               onClick={(e) => handleShowActions(item, e)}
             >
-              <Text className={styles.deferBtnText}>延期</Text>
+              <Text className={styles.deferBtnText}>操作</Text>
             </View>
             <Switch
               checked={item.reminder}
@@ -364,6 +520,12 @@ const ReminderCenterPage: React.FC = () => {
           >
             <Text>🟠 中风险</Text>
           </View>
+          <View
+            className={classnames(styles.chip, styles.chipRiskLow, filterRisk === 'low' && styles.chipRiskLowActive)}
+            onClick={() => setFilterRisk('low')}
+          >
+            <Text>🟢 低风险</Text>
+          </View>
         </ScrollView>
       </View>
 
@@ -414,6 +576,34 @@ const ReminderCenterPage: React.FC = () => {
           />
         ) : null}
       </View>
+
+      {showDeferModal && currentItem && (
+        <View className={styles.modalOverlay} onClick={handleCancelDefer}>
+          <View className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <Text className={styles.modalTitle}>暂缓付款</Text>
+            <Text className={styles.modalSubtitle}>{currentItem.orderTitle}</Text>
+            <Text className={styles.modalAmount}>{formatCurrency(currentItem.amount)}</Text>
+            <View className={styles.inputWrapper}>
+              <Text className={styles.inputLabel}>暂缓原因</Text>
+              <Input
+                className={styles.modalInput}
+                placeholder="请输入暂缓原因"
+                value={deferReason}
+                onInput={(e) => setDeferReason(e.detail.value)}
+                maxlength={100}
+              />
+            </View>
+            <View className={styles.modalActions}>
+              <View className={styles.modalCancelBtn} onClick={handleCancelDefer}>
+                <Text className={styles.modalCancelText}>取消</Text>
+              </View>
+              <View className={styles.modalConfirmBtn} onClick={handleConfirmDefer}>
+                <Text className={styles.modalConfirmText}>确认暂缓</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

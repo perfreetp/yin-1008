@@ -196,13 +196,18 @@ const InspectionPage: React.FC = () => {
       return;
     }
     const patch: any = {};
-    patch.acceptedAt = new Date().toISOString().split('T')[0];
     if (notes.trim()) {
       patch.internalNotes = order.internalNotes
         ? `${order.internalNotes}\n\n【验收备注】\n${notes}`
         : `【验收备注】\n${notes}`;
     }
-    updateOrder(order.id, patch);
+    if (localIssues.length > 0) {
+      patch.issues = localIssues;
+    }
+    if (Object.keys(patch).length > 0) {
+      updateOrder(order.id, patch);
+    }
+    markAccepted(order.id);
     Taro.showToast({ title: '已完成验收🎉', icon: 'success' });
     setTimeout(() => Taro.navigateBack(), 800);
   };

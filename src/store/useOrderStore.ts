@@ -20,6 +20,7 @@ interface OrderStore {
   updatePayment: (orderId: string, paymentId: string, data: Partial<PaymentRecord>) => void;
   markPaymentPaid: (orderId: string, paymentId: string) => void;
   togglePaymentReminder: (orderId: string, paymentId: string) => void;
+  disablePaymentReminder: (orderId: string, paymentId: string) => void;
   deferPayment: (orderId: string, paymentId: string, reason: string, newDueDate?: string) => void;
 
   markDelayed: (orderId: string, reason: string, newMonth?: string) => void;
@@ -52,6 +53,7 @@ interface OrderStore {
     riskLevel: 'high' | 'medium' | 'low';
     reason: string;
   }>;
+  getShopRiskScore: (shopId: string) => { score: number; reasons: string[] };
 }
 
 const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
@@ -74,6 +76,66 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   accepted: [],
   delayed: ['waiting_balance', 'balance_paid', 'cancelled'],
   cancelled: []
+};
+
+const RISK_KEYWORDS = ['慢', '差', '坑', '不推荐', '售后差'];
+
+const calculateShopRiskScore = (
+  shop: ShopInfo | undefined,
+  shopOrders: PreOrder[]
+): { score: number; reasons: string[] } => {
+  let score = 0;
+  const reasons: string[] = [];
+
+  if (!shop || shopOrders.length === 0) {
+    return { score: 0, reasons: ['数据不足'] };
+  }
+
+  const totalOrders = shopOrders.length;
+  const delayedOrders = shopOrders.filter(o => o.isDelayed).length;
+  const delayRate = totalOrders > 0 ? delayedOrders / totalOrders : 0;
+
+  if (delayRate >= 0.5) {
+    score += 35;
+    reasons.push(`订单延期率${Math.round(delayRate * 100)}%`);
+  } else if (delayRate >= 0.3) {
+    score += 20;
+    reasons.push(`订单延期率${Math.round(delayRate * 100)}%`);
+  } else if (delayRate > 0) {
+    score += 10;
+  }
+
+  const unresolvedIssues = shopOrders.reduce((count, o) => {
+    return count + o.issues.filter(i => !i.resolved).length;
+  }, 0);
+
+  if (unresolvedIssues >= 3) {
+    score += 25;
+    reasons.push(`${unresolvedIssues}个未解决验尸问题`);
+  } else if (unresolvedIssues >= 1) {
+    score += 15;
+    reasons.push(`${unresolvedIssues}个未解决验尸问题`);
+  }
+
+  const notes = shop.notes || '';
+  const matchedKeywords = RISK_KEYWORDS.filter(kw => notes.includes(kw));
+  if (matchedKeywords.length > 0) {
+    score += Math.min(25, matchedKeywords.length * 10);
+    reasons.push(`备注含风险词: ${matchedKeywords.join('、')}`);
+  }
+
+  const advanceDays = shop.advanceNoticeDays ?? 30;
+  if (advanceDays <= 7) {
+    score += 20;
+    reasons.push(`补款期仅${advanceDays}天`);
+  } else if (advanceDays <= 14) {
+    score += 15;
+    reasons.push(`补款期${advanceDays}天`);
+  } else if (advanceDays <= 21) {
+    score += 10;
+  }
+
+  return { score: Math.min(100, score), reasons };
 };
 
 const updateOrderStatus = (order: PreOrder): PreOrder => {
@@ -276,6 +338,16 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     });
   },
 
+  disablePaymentReminder: (orderId, paymentId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    const payment = order.payments.find(p => p.id === paymentId);
+    if (!payment || !payment.reminder) return;
+    get().updatePayment(orderId, paymentId, {
+      reminder: false
+    });
+  },
+
   markDelayed: (orderId, reason, newMonth) => {
     const order = get().orders.find(o => o.id === orderId);
     if (!order) return;
@@ -407,6 +479,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     if (!order) return;
     const payment = order.payments.find(p => p.id === paymentId);
     if (!payment) return;
+
     const deferRecord: DeferRecord = {
       id: generateId(),
       reason,
@@ -414,17 +487,20 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       originalDueDate: payment.dueDate,
       newDueDate
     };
-    const patch: any = {};
-    if (newDueDate) {
-      patch.payments = order.payments.map(p =>
-        p.id === paymentId ? { ...p, dueDate: newDueDate } : p
-      );
-    }
-    patch.deferRecords = [...order.deferRecords, deferRecord];
-    patch.internalNotes = order.internalNotes
+
+    const updatedPayments = order.payments.map(p =>
+      p.id === paymentId && newDueDate ? { ...p, dueDate: newDueDate } : p
+    );
+
+    const updatedInternalNotes = order.internalNotes
       ? `${order.internalNotes}\n\n【暂缓付款】${reason}`
       : `【暂缓付款】${reason}`;
-    get().updateOrder(orderId, patch);
+
+    get().updateOrder(orderId, {
+      payments: updatedPayments,
+      deferRecords: [...order.deferRecords, deferRecord],
+      internalNotes: updatedInternalNotes
+    });
   },
 
   addShop: (data) => {
@@ -484,6 +560,12 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     );
     return unpaidBalances.some(p => p.dueDate?.startsWith(month));
   }),
+  getShopRiskScore: (shopId) => {
+    const shop = get().shops.find(s => s.id === shopId);
+    const shopOrders = get().orders.filter(o => o.shopId === shopId);
+    return calculateShopRiskScore(shop, shopOrders);
+  },
+
   getBudgetDecisionList: (month) => {
     const orders = get().orders;
     const budgetLimit = get().monthlyBudgets.find(b => b.month === month)?.limit || 0;
@@ -507,7 +589,8 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       o.payments.forEach(p => {
         if (p.status !== 'unpaid' || !p.dueDate?.startsWith(month)) return;
         const shop = shops.find(s => s.id === o.shopId);
-        const advanceDays = shop?.advanceNoticeDays || 30;
+        const shopOrders = orders.filter(order => order.shopId === o.shopId);
+        const shopRisk = calculateShopRiskScore(shop, shopOrders);
         const daysUntilDue = Math.max(0, dayjs(p.dueDate).diff(dayjs(), 'day'));
 
         let score = 0;
@@ -521,7 +604,15 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         else if (daysUntilDue <= 15) { score += 20; reasons.push('半月内到期'); }
         else if (daysUntilDue <= 30) { score += 10; }
 
-        if (advanceDays >= 30 && amountRatio >= 0.2) { score += 10; reasons.push('店铺补款期短'); }
+        if (shopRisk.score >= 50) {
+          score += 25;
+          reasons.push(`店铺高风险: ${shopRisk.reasons[0]}`);
+        } else if (shopRisk.score >= 25) {
+          score += 15;
+          reasons.push(`店铺中风险: ${shopRisk.reasons[0]}`);
+        } else if (shopRisk.score > 0) {
+          score += 5;
+        }
 
         if (o.deferRecords && o.deferRecords.length > 0) { score += 15; reasons.push('已暂缓过'); }
 
