@@ -223,6 +223,28 @@ const CalendarPage: React.FC = () => {
             </Text>
           </View>
         </View>
+        <View
+          style={{
+            marginTop: '16rpx',
+            padding: '20rpx 24rpx',
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.15) 100%)',
+            borderRadius: '12rpx',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+          onClick={() => Taro.navigateTo({ url: '/pages/reminder-center/index' })}
+        >
+          <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
+            <Text style={{ fontSize: '32rpx' }}>🔔</Text>
+            <Text style={{ fontSize: '26rpx', color: '#8B5CF6', fontWeight: 600 }}>
+              提醒中心
+            </Text>
+          </View>
+          <Text style={{ fontSize: '24rpx', color: '#8B5CF6' }}>
+            查看30天提醒 ›
+          </Text>
+        </View>
       </View>
 
       <View className={styles.section}>

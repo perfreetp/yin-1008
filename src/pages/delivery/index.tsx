@@ -36,6 +36,7 @@ const DeliveryPage: React.FC = () => {
     initStore,
     initialized,
     markDelivered,
+    markShipped,
     markAccepted,
     updateTracking
   } = useOrderStore();
@@ -92,6 +93,10 @@ const DeliveryPage: React.FC = () => {
 
   const handleMarkDelivered = (e: React.MouseEvent, order: PreOrder) => {
     e.stopPropagation();
+    if (order.status !== 'shipping') {
+      Taro.showToast({ title: '请先录入发货信息', icon: 'none' });
+      return;
+    }
     Taro.showModal({
       title: '确认签收',
       content: `确认"${order.title}"已签收？`,
@@ -99,6 +104,32 @@ const DeliveryPage: React.FC = () => {
         if (res.confirm) {
           markDelivered(order.id);
           Taro.showToast({ title: '已签收', icon: 'success' });
+        }
+      }
+    });
+  };
+
+  const handleMarkShipped = (e: React.MouseEvent, order: PreOrder) => {
+    e.stopPropagation();
+    if (order.status !== 'balance_paid') {
+      Taro.showToast({ title: '当前状态无法标记发货', icon: 'none' });
+      return;
+    }
+    Taro.showModal({
+      title: '录入发货信息',
+      editable: true,
+      placeholderText: '请输入物流公司+单号，如：顺丰 SF1234567890',
+      success: (res) => {
+        if (res.confirm && res.content?.trim()) {
+          const content = res.content.trim();
+          const match = content.match(/^(.+?)\s+(.+)$/);
+          if (match) {
+            updateTracking(order.id, match[2], match[1]);
+          } else {
+            updateTracking(order.id, content, '快递');
+          }
+          markShipped(order.id);
+          Taro.showToast({ title: '已标记发货', icon: 'success' });
         }
       }
     });
@@ -236,7 +267,15 @@ const DeliveryPage: React.FC = () => {
 
         {activeTab !== 'accepted' && (
           <View className={styles.actionRow}>
-            {activeTab === 'pending' && order.trackingNo && (
+            {activeTab === 'pending' && order.status === 'balance_paid' && (
+              <Button
+                className={classnames(styles.actionBtn, styles.btnSuccess)}
+                onClick={(e) => handleMarkShipped(e, order)}
+              >
+                录入发货
+              </Button>
+            )}
+            {activeTab === 'pending' && order.status === 'shipping' && order.trackingNo && (
               <Button
                 className={classnames(styles.actionBtn, styles.btnOutline)}
                 onClick={(e) => handleMarkDelivered(e, order)}

@@ -45,7 +45,9 @@ const OrderDetailPage: React.FC = () => {
     markDelayed,
     updateTracking,
     updateOrder,
-    togglePaymentReminder
+    togglePaymentReminder,
+    confirmCollection,
+    removeFromCollection
   } = useOrderStore();
 
   const orderId = router.params?.id || '';
@@ -173,11 +175,21 @@ const OrderDetailPage: React.FC = () => {
   };
 
   const handleToggleFavorite = () => {
-    updateOrder(order.id, { isFavorite: !order.isFavorite });
-    Taro.showToast({
-      title: order.isFavorite ? '已取消收藏' : '已收藏',
-      icon: 'none'
-    });
+    if (order.cabinetStatus === 'collected') {
+      Taro.showModal({
+        title: '取消收藏',
+        content: `确认将"${order.title}"从收藏中移除？移除后将回到待入柜状态。`,
+        success: (res) => {
+          if (res.confirm) {
+            removeFromCollection(order.id);
+            Taro.showToast({ title: '已取消收藏', icon: 'none' });
+          }
+        }
+      });
+    } else if (order.cabinetStatus === 'pending_cabinet') {
+      confirmCollection(order.id);
+      Taro.showToast({ title: '已加入收藏', icon: 'success' });
+    }
   };
 
   const handleToggleReminder = (paymentId: string) => {
@@ -210,7 +222,7 @@ const OrderDetailPage: React.FC = () => {
             className={styles.favIcon}
             onClick={handleToggleFavorite}
           >
-            {order.isFavorite ? '⭐' : '☆'}
+            {order.cabinetStatus === 'collected' ? '⭐' : order.cabinetStatus === 'pending_cabinet' ? '📋' : '☆'}
           </Text>
         </View>
         <View className={styles.heroSeriesRow}>
@@ -455,9 +467,14 @@ const OrderDetailPage: React.FC = () => {
             开箱验收
           </Button>
         )}
-        {order.status === 'accepted' && (
+        {order.status === 'accepted' && order.cabinetStatus === 'pending_cabinet' && (
           <Button className={classnames(styles.btn, styles.btnPrimary)} onClick={handleToggleFavorite}>
-            {order.isFavorite ? '取消收藏' : '加入收藏'}
+            确认收藏
+          </Button>
+        )}
+        {order.status === 'accepted' && order.cabinetStatus === 'collected' && (
+          <Button className={classnames(styles.btn, styles.btnOutline)} onClick={handleToggleFavorite}>
+            取消收藏
           </Button>
         )}
       </View>

@@ -36,7 +36,7 @@ const COVER_MAP: Record<string, string> = {
 };
 
 const StatsPage: React.FC = () => {
-  const { orders, initStore, initialized } = useOrderStore();
+  const { orders, initStore, initialized, monthlyBudgets, setMonthlyBudget, confirmCollection, removeFromCollection } = useOrderStore();
 
   useEffect(() => {
     if (!initialized) initStore();
@@ -105,7 +105,15 @@ const StatsPage: React.FC = () => {
   }, [orders]);
 
   const acceptedOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'accepted').sort((a, b) => {
+    return orders.filter(o => o.cabinetStatus === 'collected').sort((a, b) => {
+      const da = a.acceptedAt ? new Date(a.acceptedAt).getTime() : 0;
+      const db = b.acceptedAt ? new Date(b.acceptedAt).getTime() : 0;
+      return db - da;
+    });
+  }, [orders]);
+
+  const pendingCabinetOrders = useMemo(() => {
+    return orders.filter(o => o.cabinetStatus === 'pending_cabinet').sort((a, b) => {
       const da = a.acceptedAt ? new Date(a.acceptedAt).getTime() : 0;
       const db = b.acceptedAt ? new Date(b.acceptedAt).getTime() : 0;
       return db - da;
@@ -278,7 +286,12 @@ const StatsPage: React.FC = () => {
           {budgetWarning.months.filter(m => m.pending > 0).length > 0 ? (
             budgetWarning.months.filter(m => m.pending > 0).map((m, mIdx) => {
               const isHighest = m.pending === budgetWarning.maxPending;
-              const barPercent = (m.pending / budgetWarning.maxPending) * 100;
+              const budgetLimit = monthlyBudgets.find(b => b.month === m.month)?.limit || 0;
+              const isOverBudget = budgetLimit > 0 && m.pending > budgetLimit;
+              const overAmount = isOverBudget ? m.pending - budgetLimit : 0;
+              const barPercent = budgetLimit > 0
+                ? Math.min((m.pending / budgetLimit) * 100, 150)
+                : (m.pending / budgetWarning.maxPending) * 100;
               return (
                 <View
                   key={m.month}
@@ -289,10 +302,22 @@ const StatsPage: React.FC = () => {
                 >
                   <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16rpx' }}>
                     <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
-                      <Text style={{ fontSize: '28rpx', fontWeight: 600, color: isHighest ? '#EF4444' : '#1E1B4B' }}>
+                      <Text style={{ fontSize: '28rpx', fontWeight: 600, color: isOverBudget ? '#EF4444' : isHighest ? '#EF4444' : '#1E1B4B' }}>
                         {m.label}
                       </Text>
-                      {isHighest && (
+                      {isOverBudget && (
+                        <View style={{
+                          background: '#FEE2E2',
+                          padding: '4rpx 14rpx',
+                          borderRadius: '8rpx',
+                          fontSize: '22rpx',
+                          color: '#EF4444',
+                          fontWeight: 600
+                        }}>
+                          超预算 ¥{overAmount.toFixed(0)}
+                        </View>
+                      )}
+                      {!isOverBudget && isHighest && (
                         <View style={{
                           background: '#FEE2E2',
                           padding: '4rpx 14rpx',
@@ -305,70 +330,130 @@ const StatsPage: React.FC = () => {
                         </View>
                       )}
                     </View>
-                    <Text style={{
-                      fontSize: '32rpx',
-                      fontWeight: 700,
-                      color: isHighest ? '#EF4444' : '#F59E0B'
-                    }}>
-                      ¥{m.pending.toFixed(0)}
-                    </Text>
+                    <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
+                      <Text style={{
+                        fontSize: '32rpx',
+                        fontWeight: 700,
+                        color: isOverBudget ? '#EF4444' : '#F59E0B'
+                      }}>
+                        ¥{m.pending.toFixed(0)}
+                      </Text>
+                      <Text
+                        style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600, padding: '4rpx 12rpx', background: 'rgba(139,92,246,0.1)', borderRadius: '8rpx' }}
+                        onClick={() => {
+                          Taro.showModal({
+                            title: `设置${m.label}预算上限`,
+                            editable: true,
+                            placeholderText: '请输入月度预算金额',
+                            content: budgetLimit > 0 ? String(budgetLimit) : '',
+                            success: (res) => {
+                              if (res.confirm && res.content?.trim()) {
+                                const val = parseFloat(res.content.trim());
+                                if (!isNaN(val) && val > 0) {
+                                  setMonthlyBudget(m.month, val);
+                                  Taro.showToast({ title: '预算已设置', icon: 'success' });
+                                }
+                              }
+                            }
+                          });
+                        }}
+                      >
+                        {budgetLimit > 0 ? `上限¥${budgetLimit.toFixed(0)}` : '设上限'}
+                      </Text>
+                    </View>
                   </View>
                   <View style={{
                     height: '12rpx',
                     background: '#F2F3F5',
                     borderRadius: '999rpx',
                     overflow: 'hidden',
-                    marginBottom: '16rpx'
+                    marginBottom: '16rpx',
+                    position: 'relative'
                   }}>
                     <View style={{
-                      width: `${barPercent}%`,
+                      width: `${Math.min(barPercent, 100)}%`,
                       height: '100%',
-                      background: isHighest
+                      background: isOverBudget
                         ? 'linear-gradient(90deg, #EF4444, #F87171)'
-                        : 'linear-gradient(90deg, #F59E0B, #FCD34D)',
+                        : isHighest
+                          ? 'linear-gradient(90deg, #EF4444, #F87171)'
+                          : 'linear-gradient(90deg, #F59E0B, #FCD34D)',
                       borderRadius: '999rpx'
                     }} />
+                    {budgetLimit > 0 && (
+                      <View style={{
+                        position: 'absolute',
+                        left: `${Math.min((budgetLimit / (budgetWarning.maxPending || 1)) * 100, 100)}%`,
+                        top: '-4rpx',
+                        width: '4rpx',
+                        height: '20rpx',
+                        background: '#EF4444',
+                        borderRadius: '2rpx'
+                      }} />
+                    )}
                   </View>
-                  {m.orders.map((o, oIdx) => (
-                    <View
-                      key={`${o.id}-${oIdx}`}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '8rpx 0',
-                        opacity: 0.9
-                      }}
-                      onClick={() => Taro.navigateTo({
-                        url: `/pages/order-detail/index?id=${o.id}`
-                      })}
-                    >
-                      <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx', flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontSize: '24rpx', color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                          {o.title}
-                        </Text>
-                        {o.daysDiff <= 7 && o.daysDiff >= 0 && (
-                          <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
-                            {o.daysDiff}天后
-                          </Text>
-                        )}
-                        {o.daysDiff < 0 && (
-                          <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
-                            已超期
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={{
-                        fontSize: '26rpx',
-                        color: '#F59E0B',
-                        fontWeight: 600,
-                        flexShrink: 0,
-                        marginLeft: '16rpx'
-                      }}>
-                        ¥{o.amount.toFixed(0)}
+                  {isOverBudget && (
+                    <View style={{
+                      background: '#FEF2F2',
+                      borderRadius: '8rpx',
+                      padding: '12rpx 16rpx',
+                      marginBottom: '12rpx'
+                    }}>
+                      <Text style={{ fontSize: '22rpx', color: '#EF4444', fontWeight: 600 }}>
+                        💡 优先考虑取消或延后以下订单：
                       </Text>
                     </View>
-                  ))}
+                  )}
+                  {m.orders.map((o, oIdx) => {
+                    const isPriorityCut = isOverBudget && oIdx >= m.orders.length - Math.ceil(overAmount / (m.pending / m.orders.length));
+                    return (
+                      <View
+                        key={`${o.id}-${oIdx}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '8rpx 0',
+                          opacity: isPriorityCut ? 1 : 0.9,
+                          background: isPriorityCut ? '#FEF2F2' : 'transparent',
+                          borderRadius: '8rpx',
+                          paddingLeft: isPriorityCut ? '12rpx' : 0,
+                          paddingRight: isPriorityCut ? '12rpx' : 0
+                        }}
+                        onClick={() => Taro.navigateTo({
+                          url: `/pages/order-detail/index?id=${o.id}`
+                        })}
+                      >
+                        <View style={{ display: 'flex', alignItems: 'center', gap: '8rpx', flex: 1, minWidth: 0 }}>
+                          {isPriorityCut && (
+                            <Text style={{ fontSize: '20rpx', color: '#EF4444', flexShrink: 0 }}>⚡</Text>
+                          )}
+                          <Text style={{ fontSize: '24rpx', color: isPriorityCut ? '#EF4444' : '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                            {o.title}
+                          </Text>
+                          {o.daysDiff <= 7 && o.daysDiff >= 0 && (
+                            <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
+                              {o.daysDiff}天后
+                            </Text>
+                          )}
+                          {o.daysDiff < 0 && (
+                            <Text style={{ fontSize: '20rpx', color: '#EF4444', fontWeight: 600, flexShrink: 0 }}>
+                              已超期
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={{
+                          fontSize: '26rpx',
+                          color: isPriorityCut ? '#EF4444' : '#F59E0B',
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          marginLeft: '16rpx'
+                        }}>
+                          ¥{o.amount.toFixed(0)}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               );
             })
@@ -435,6 +520,47 @@ const StatsPage: React.FC = () => {
         )}
       </View>
 
+      {pendingCabinetOrders.length > 0 && (
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>📋 待入柜</Text>
+            <Text style={{ fontSize: '24rpx', color: '#F59E0B' }}>{pendingCabinetOrders.length} 件待确认</Text>
+          </View>
+          <View className={styles.collectionGrid}>
+            {pendingCabinetOrders.map(order => {
+              const cover = order.photos[0]?.url || COVER_MAP[order.series || ''] || 'https://picsum.photos/id/201/400/400';
+              return (
+                <View
+                  key={order.id}
+                  className={styles.collectionItem}
+                  onClick={() => Taro.navigateTo({
+                    url: `/pages/order-detail/index?id=${order.id}`
+                  })}
+                >
+                  <Image className={styles.collectionImg} src={cover} mode="aspectFill" />
+                  <View className={styles.collectionInfo}>
+                    <Text className={styles.collectionTitle}>{order.title}</Text>
+                    <View className={styles.collectionMeta}>
+                      <Text className={styles.collectionShop}>{order.shopName}</Text>
+                      <Text
+                        style={{ fontSize: '22rpx', color: '#8B5CF6', fontWeight: 600 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          confirmCollection(order.id);
+                          Taro.showToast({ title: '已确认收藏', icon: 'success' });
+                        }}
+                      >
+                        确认收藏 ›
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
           <Text className={styles.sectionTitle}>🏆 我的收藏</Text>
@@ -470,7 +596,7 @@ const StatsPage: React.FC = () => {
           <EmptyState
             emoji="🏆"
             title="收藏夹空空如也"
-            description="完成验收的手办会自动加入收藏列表"
+            description="完成验收并确认收藏的手办会在这里展示"
           />
         )}
       </View>

@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import type { PreOrder, ShopInfo, OrderStatus, PaymentRecord } from '@/types/order';
+import type { PreOrder, ShopInfo, OrderStatus, PaymentRecord, MonthlyBudget } from '@/types/order';
 import { mockOrders, mockShops } from '@/data/mockData';
 import { generateId, saveToStorage, storageKeys, loadFromStorage } from '@/utils/storage';
 
 interface OrderStore {
   orders: PreOrder[];
   shops: ShopInfo[];
+  monthlyBudgets: MonthlyBudget[];
   initialized: boolean;
 
   initStore: () => Promise<void>;
@@ -24,10 +25,15 @@ interface OrderStore {
   markShipped: (orderId: string) => void;
   markDelivered: (orderId: string) => void;
   markAccepted: (orderId: string) => void;
+  addToCabinet: (orderId: string) => void;
+  confirmCollection: (orderId: string) => void;
+  removeFromCollection: (orderId: string) => void;
 
   addShop: (data: Partial<ShopInfo>) => ShopInfo;
   updateShop: (id: string, data: Partial<ShopInfo>) => void;
   deleteShop: (id: string) => void;
+
+  setMonthlyBudget: (month: string, limit: number) => void;
 
   getOrdersByStatus: (status: OrderStatus) => PreOrder[];
   getOrdersByShop: (shopId: string) => PreOrder[];
@@ -45,6 +51,17 @@ const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
   accepted: null,
   delayed: 'waiting_balance',
   cancelled: null
+};
+
+const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  deposit_paid: ['waiting_balance', 'delayed', 'cancelled'],
+  waiting_balance: ['balance_paid', 'delayed', 'cancelled'],
+  balance_paid: ['shipping', 'delayed', 'cancelled'],
+  shipping: ['delivered'],
+  delivered: ['accepted'],
+  accepted: [],
+  delayed: ['waiting_balance', 'balance_paid', 'cancelled'],
+  cancelled: []
 };
 
 const updateOrderStatus = (order: PreOrder): PreOrder => {
@@ -68,6 +85,7 @@ const updateOrderStatus = (order: PreOrder): PreOrder => {
 export const useOrderStore = create<OrderStore>((set, get) => ({
   orders: [],
   shops: [],
+  monthlyBudgets: [],
   initialized: false,
 
   initStore: async () => {
@@ -75,10 +93,17 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
     const savedOrders = await loadFromStorage<PreOrder[]>(storageKeys.ORDERS, []);
     const savedShops = await loadFromStorage<ShopInfo[]>(storageKeys.SHOPS, []);
+    const savedBudgets = await loadFromStorage<MonthlyBudget[]>(storageKeys.BUDGETS, []);
+
+    const migratedOrders = (savedOrders.length > 0 ? savedOrders : mockOrders).map(o => ({
+      ...o,
+      cabinetStatus: o.cabinetStatus || (o.isFavorite ? 'collected' : (o.status === 'accepted' ? 'pending_cabinet' : 'none')) as PreOrder['cabinetStatus']
+    }));
 
     set({
-      orders: savedOrders.length > 0 ? savedOrders : mockOrders,
+      orders: migratedOrders,
       shops: savedShops.length > 0 ? savedShops : mockShops,
+      monthlyBudgets: savedBudgets,
       initialized: true
     });
   },
@@ -137,6 +162,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       customerNotes: data.customerNotes,
       internalNotes: data.internalNotes,
       isFavorite: data.isFavorite || false,
+      cabinetStatus: 'none',
       createdAt: now,
       updatedAt: now
     };
@@ -221,6 +247,12 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   },
 
   markDelayed: (orderId, reason, newMonth) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (!VALID_TRANSITIONS[order.status]?.includes('delayed') && order.status !== 'delayed') {
+      console.warn('[Store] markDelayed: invalid transition from', order.status);
+      return;
+    }
     const orders = get().orders.map(o => {
       if (o.id !== orderId) return o;
       const updated: PreOrder = {
@@ -247,12 +279,24 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   },
 
   markShipped: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.status !== 'balance_paid') {
+      console.warn('[Store] markShipped: invalid transition from', order.status);
+      return;
+    }
     get().updateOrder(orderId, {
       shippedAt: new Date().toISOString().split('T')[0]
     });
   },
 
   markDelivered: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.status !== 'shipping') {
+      console.warn('[Store] markDelivered: invalid transition from', order.status);
+      return;
+    }
     get().updateOrder(orderId, {
       deliveredAt: new Date().toISOString().split('T')[0]
     });
@@ -260,16 +304,49 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
   markAccepted: (orderId) => {
     const order = get().orders.find(o => o.id === orderId);
-    if (!order) {
-      console.warn('[Store] markAccepted: order not found', orderId);
-      return;
-    }
-    if (!order.deliveredAt) {
-      console.warn('[Store] markAccepted: order not delivered yet', orderId);
+    if (!order) return;
+    if (order.status !== 'delivered') {
+      console.warn('[Store] markAccepted: invalid transition from', order.status);
       return;
     }
     get().updateOrder(orderId, {
-      acceptedAt: new Date().toISOString().split('T')[0]
+      acceptedAt: new Date().toISOString().split('T')[0],
+      cabinetStatus: 'pending_cabinet'
+    });
+  },
+
+  addToCabinet: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.status !== 'accepted' && order.cabinetStatus !== 'pending_cabinet') {
+      console.warn('[Store] addToCabinet: order not accepted yet', orderId);
+      return;
+    }
+    get().updateOrder(orderId, {
+      isFavorite: true,
+      cabinetStatus: 'collected'
+    });
+  },
+
+  confirmCollection: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.cabinetStatus !== 'pending_cabinet') {
+      console.warn('[Store] confirmCollection: order not in pending_cabinet', orderId);
+      return;
+    }
+    get().updateOrder(orderId, {
+      isFavorite: true,
+      cabinetStatus: 'collected'
+    });
+  },
+
+  removeFromCollection: (orderId) => {
+    const order = get().orders.find(o => o.id === orderId);
+    if (!order) return;
+    get().updateOrder(orderId, {
+      isFavorite: false,
+      cabinetStatus: order.status === 'accepted' ? 'pending_cabinet' : 'none'
     });
   },
 
@@ -301,6 +378,19 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
     const shops = get().shops.filter(s => s.id !== id);
     set({ shops });
     saveToStorage(storageKeys.SHOPS, shops);
+  },
+
+  setMonthlyBudget: (month, limit) => {
+    const budgets = get().monthlyBudgets;
+    const idx = budgets.findIndex(b => b.month === month);
+    let updated: MonthlyBudget[];
+    if (idx >= 0) {
+      updated = budgets.map(b => b.month === month ? { ...b, limit } : b);
+    } else {
+      updated = [...budgets, { month, limit }];
+    }
+    set({ monthlyBudgets: updated });
+    saveToStorage(storageKeys.BUDGETS, updated);
   },
 
   getOrdersByStatus: (status) => get().orders.filter(o => o.status === status),

@@ -6,7 +6,8 @@ export const storageKeys = {
   ORDERS: `${STORAGE_PREFIX}orders`,
   SHOPS: `${STORAGE_PREFIX}shops`,
   FAVORITES: `${STORAGE_PREFIX}favorites`,
-  SETTINGS: `${STORAGE_PREFIX}settings`
+  SETTINGS: `${STORAGE_PREFIX}settings`,
+  BUDGETS: `${STORAGE_PREFIX}monthly_budgets`
 };
 
 export const loadFromStorage = async <T>(key: string, defaultValue: T): Promise<T> => {

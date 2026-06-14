@@ -7,7 +7,8 @@ export default defineAppConfig({
     'pages/stats/index',
     'pages/order-edit/index',
     'pages/order-detail/index',
-    'pages/inspection/index'
+    'pages/inspection/index',
+    'pages/reminder-center/index'
   ],
   window: {
     backgroundTextStyle: 'light',

@@ -10,6 +10,8 @@ export type OrderStatus =
 
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
 
+export type CabinetStatus = 'none' | 'pending_cabinet' | 'collected';
+
 export interface ShopInfo {
   id: string;
   name: string;
@@ -76,6 +78,7 @@ export interface PreOrder {
   customerNotes?: string;
   internalNotes?: string;
   isFavorite: boolean;
+  cabinetStatus: CabinetStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,4 +98,9 @@ export interface MonthPayment {
   balance: number;
   orderCount: number;
   orderIds: string[];
+}
+
+export interface MonthlyBudget {
+  month: string;
+  limit: number;
 }
