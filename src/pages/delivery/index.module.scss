@@ -1,0 +1,339 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 48rpx;
+}
+
+.tabs {
+  display: flex;
+  background: $color-bg-card;
+  padding: $spacing-sm $page-padding;
+  border-bottom: 1rpx solid $color-divider;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabItem {
+  flex: 1;
+  padding: 16rpx 0;
+  text-align: center;
+  position: relative;
+}
+
+.tabText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.tabItemActive .tabText {
+  color: $color-primary;
+  font-weight: $font-weight-bold;
+}
+
+.tabIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  background: $color-primary;
+  border-radius: $radius-round;
+}
+
+.listContent {
+  padding: $spacing-md $page-padding;
+}
+
+.statusBanner {
+  background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.1) 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1rpx solid $color-primary-soft;
+}
+
+.bannerInfo {
+  flex: 1;
+}
+
+.bannerTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary-dark;
+  margin-bottom: $spacing-xs;
+}
+
+.bannerSub {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.bannerCount {
+  width: 80rpx;
+  height: 80rpx;
+  background: $color-primary;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+}
+
+.bannerCountText {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+}
+
+.deliveryCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.trackingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  flex: 1;
+}
+
+.trackingTitle {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: 4rpx;
+}
+
+.trackingInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.trackingNo {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  font-family: monospace;
+}
+
+.carrierTag {
+  background: $color-info-soft;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: 22rpx;
+  color: $color-info;
+}
+
+.trackingDates {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-xs;
+}
+
+.trackingDateItem {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.productBlock {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.productImg {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  flex-shrink: 0;
+}
+
+.productInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.productTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  line-height: 1.4;
+}
+
+.productMeta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-top: $spacing-xs;
+}
+
+.shopTag {
+  background: $color-bg-hover;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.priceText {
+  font-size: $font-size-md;
+  color: $color-price;
+  font-weight: $font-weight-bold;
+}
+
+.issueBlock {
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background: $color-error-soft;
+  border-radius: $radius-md;
+  border-left: 6rpx solid $color-error;
+}
+
+.issueTitle {
+  font-size: $font-size-xs;
+  color: $color-error;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-xs;
+}
+
+.issueList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.issueItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+  color: $color-error;
+}
+
+.issueStatus {
+  padding: 2rpx 10rpx;
+  border-radius: $radius-xs;
+  font-size: 20rpx;
+  font-weight: $font-weight-medium;
+}
+
+.statusResolved {
+  background: $color-success-soft;
+  color: $color-success;
+}
+
+.statusOpen {
+  background: $color-error;
+  color: $color-text-white;
+}
+
+.actionRow {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.actionBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+}
+
+.btnSecondary {
+  background: $color-primary-soft;
+  color: $color-primary;
+}
+
+.btnSuccess {
+  background: $color-success;
+  color: $color-text-white;
+}
+
+.btnOutline {
+  background: transparent;
+  border: 2rpx solid $color-border;
+  color: $color-text-secondary;
+}
+
+.photosPreview {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.photoItem {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: $radius-sm;
+  background: $color-bg-hover;
+  overflow: hidden;
+  position: relative;
+}
+
+.photoMore {
+  background: $color-bg-hover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.timelineIcon {
+  width: 48rpx;
+  height: 48rpx;
+  background: $color-info-soft;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  margin-right: $spacing-sm;
+  flex-shrink: 0;
+}

@@ -1,0 +1,167 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.hero {
+  padding: $spacing-lg $page-padding $spacing-xl;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  border-radius: 0 0 48rpx 48rpx;
+  margin-bottom: -64rpx;
+}
+
+.heroTitle {
+  font-size: $font-size-xxl;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-xs;
+}
+
+.heroSubtitle {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+  padding: 0 $page-padding;
+  position: relative;
+  z-index: 2;
+  margin-bottom: $spacing-lg;
+}
+
+.statItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.statValue {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  line-height: 1.2;
+  margin-bottom: $spacing-xs;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.statWarning .statValue { color: $color-warning; }
+.statInfo .statValue { color: $color-info; }
+.statSuccess .statValue { color: $color-success; }
+
+.filterBar {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.filterScroll {
+  @include scroll-x-container;
+}
+
+.filterChip {
+  @include scroll-x-item(auto);
+  display: inline-flex;
+  align-items: center;
+  padding: 12rpx 28rpx;
+  border-radius: $radius-button;
+  background: $color-bg-card;
+  margin-right: $spacing-sm;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  transition: all $transition-base;
+}
+
+.filterChipActive {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+
+  .chipText {
+    color: $color-text-white;
+    font-weight: $font-weight-medium;
+  }
+
+  .chipCount {
+    background: rgba(255, 255, 255, 0.25);
+    color: $color-text-white;
+  }
+}
+
+.chipText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.chipCount {
+  margin-left: 10rpx;
+  padding: 2rpx 12rpx;
+  border-radius: $radius-round;
+  background: $color-primary-soft;
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+  min-width: 36rpx;
+  text-align: center;
+}
+
+.searchBar {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.searchInput {
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  padding: 16rpx 28rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.searchIcon {
+  font-size: 32rpx;
+  margin-right: $spacing-sm;
+  color: $color-text-tertiary;
+}
+
+.searchText {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.orderList {
+  padding: 0 $page-padding;
+}
+
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 140rpx;
+  width: 112rpx;
+  height: 112rpx;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 32rpx rgba(139, 92, 246, 0.4);
+  z-index: 100;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.94);
+    opacity: 0.9;
+  }
+}
+
+.fabIcon {
+  font-size: 56rpx;
+  color: $color-text-white;
+  line-height: 1;
+}

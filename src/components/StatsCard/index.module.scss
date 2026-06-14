@@ -1,0 +1,86 @@
+@use '@/styles/variables.scss' as *;
+
+.statsCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  position: relative;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 8rpx;
+    height: 100%;
+  }
+
+  &.clickable {
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+  }
+}
+
+.variantPrimary {
+  &::before { background: $color-primary; }
+  .value { color: $color-primary; }
+}
+
+.variantSuccess {
+  &::before { background: $color-success; }
+  .value { color: $color-success; }
+}
+
+.variantWarning {
+  &::before { background: $color-warning; }
+  .value { color: $color-warning; }
+}
+
+.variantError {
+  &::before { background: $color-error; }
+  .value { color: $color-error; }
+}
+
+.variantInfo {
+  &::before { background: $color-info; }
+  .value { color: $color-info; }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.title {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-normal;
+}
+
+.icon {
+  font-size: 36rpx;
+}
+
+.cardBody {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-sm;
+}
+
+.value {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+}
+
+.subValue {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}

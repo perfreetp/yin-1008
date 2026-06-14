@@ -1,0 +1,49 @@
+@use '@/styles/variables.scss' as *;
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tagSm {
+  padding: 4rpx 14rpx;
+
+  .tagText {
+    font-size: $font-size-xs;
+  }
+}
+
+.tagText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.tagSuccess {
+  background-color: $color-success-soft;
+  .tagText { color: $color-success; }
+}
+
+.tagWarning {
+  background-color: $color-warning-soft;
+  .tagText { color: $color-warning; }
+}
+
+.tagError {
+  background-color: $color-error-soft;
+  .tagText { color: $color-error; }
+}
+
+.tagInfo {
+  background-color: $color-info-soft;
+  .tagText { color: $color-info; }
+}
+
+.tagTertiary {
+  background-color: $color-bg-hover;
+  .tagText { color: $color-text-tertiary; }
+}

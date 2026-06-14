@@ -1,0 +1,214 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.form {
+  padding: $spacing-md $page-padding;
+}
+
+.formSection {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+}
+
+.sectionTitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1rpx solid $color-divider;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.formLabel {
+  width: 160rpx;
+  flex-shrink: 0;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.formInputWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.formInput {
+  flex: 1;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  padding: 8rpx 0;
+}
+
+.formInputPlaceholder {
+  color: $color-text-disabled;
+}
+
+.formSuffix {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-left: $spacing-xs;
+  flex-shrink: 0;
+}
+
+.formArrow {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-left: $spacing-sm;
+}
+
+.textareaWrap {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-sm;
+}
+
+.textareaLabel {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.formTextarea {
+  width: 100%;
+  min-height: 160rpx;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  padding: $spacing-sm;
+  background: $color-bg-hover;
+  border-radius: $radius-md;
+  line-height: 1.6;
+}
+
+.priceRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: $spacing-sm;
+  padding: $spacing-md 0;
+}
+
+.priceItem {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  background: $color-bg-hover;
+  padding: $spacing-md;
+  border-radius: $radius-md;
+}
+
+.priceLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.priceInputWrap {
+  display: flex;
+  align-items: baseline;
+}
+
+.pricePrefix {
+  font-size: $font-size-lg;
+  color: $color-price;
+  font-weight: $font-weight-bold;
+  margin-right: 4rpx;
+}
+
+.priceInput {
+  font-size: $font-size-lg;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  width: 100%;
+}
+
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.switchInfo {
+  flex: 1;
+}
+
+.switchLabel {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.switchDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.bottomBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  gap: $spacing-md;
+}
+
+.btn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  box-shadow: 0 6rpx 20rpx rgba(139, 92, 246, 0.35);
+}
+
+.btnCancel {
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+}
+
+.btnDelete {
+  background: $color-error-soft;
+  color: $color-error;
+}

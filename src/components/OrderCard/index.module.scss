@@ -1,0 +1,299 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  position: relative;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.99);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.seriesTag {
+  background: $color-primary-soft;
+  padding: 6rpx 16rpx;
+  border-radius: $radius-xs;
+}
+
+.seriesText {
+  font-size: $font-size-xs;
+  color: $color-primary-dark;
+  font-weight: $font-weight-medium;
+  @include text-ellipsis;
+  max-width: 320rpx;
+}
+
+.cardBody {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.coverImg {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  flex-shrink: 0;
+}
+
+.thumbImg {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  flex-shrink: 0;
+}
+
+.infoWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  line-height: 1.4;
+}
+
+.character {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: 4rpx;
+  @include text-ellipsis;
+}
+
+.shopRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-top: auto;
+  padding-top: $spacing-sm;
+}
+
+.shopTag {
+  background: $color-bg-hover;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-xs;
+
+  text {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+  }
+}
+
+.delayBadge {
+  background: $color-error-soft;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-xs;
+
+  text {
+    font-size: $font-size-xs;
+    color: $color-error;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.footerLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.footerValue {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.priceValue {
+  font-size: $font-size-xl;
+  color: $color-price;
+  font-weight: $font-weight-bold;
+}
+
+.unpaidBanner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.15) 100%);
+  padding: 10rpx $spacing-lg;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.unpaidText {
+  font-size: $font-size-sm;
+  color: $color-warning;
+  font-weight: $font-weight-medium;
+}
+
+.unpaidDot {
+  width: 12rpx;
+  height: 12rpx;
+  background: $color-warning;
+  border-radius: $radius-round;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.compact {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md;
+}
+
+.compactContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.titleCompact {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  line-height: 1.4;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shopName {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  @include text-ellipsis;
+  max-width: 240rpx;
+}
+
+.priceCompact {
+  font-size: $font-size-md;
+  color: $color-price;
+  font-weight: $font-weight-semibold;
+}
+
+.tagRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.delayDot {
+  background: $color-error-soft;
+  padding: 4rpx 10rpx;
+  border-radius: $radius-xs;
+  font-size: 20rpx;
+  color: $color-error;
+  font-weight: $font-weight-medium;
+}
+
+.deliveryCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.deliveryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, rgba(139,92,246,0.05) 0%, rgba(139,92,246,0.1) 100%);
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.deliveryDate {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.deliveryBody {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+}
+
+.trackingRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin: $spacing-xs 0;
+}
+
+.label {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.trackingNo {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  font-family: monospace;
+  @include text-ellipsis;
+  flex: 1;
+}
+
+.issuesRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.issueBadge {
+  background: $color-error-soft;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+
+  text {
+    font-size: 20rpx;
+    color: $color-error;
+  }
+}
+
+.unresolvedBadge {
+  background: $color-error;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: 20rpx;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}

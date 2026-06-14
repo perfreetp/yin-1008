@@ -1,0 +1,56 @@
+@use '@/styles/variables.scss' as *;
+
+.emptyWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx $spacing-lg;
+}
+
+.emojiBox {
+  width: 120rpx;
+  height: 120rpx;
+  background: $color-primary-soft;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $spacing-lg;
+}
+
+.emoji {
+  font-size: 64rpx;
+}
+
+.title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.description {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
+  margin-bottom: $spacing-xl;
+  line-height: 1.6;
+}
+
+.actionBtn {
+  @include button-reset;
+  height: $button-height-md;
+  min-width: 200rpx;
+  padding: 0 $spacing-lg;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}

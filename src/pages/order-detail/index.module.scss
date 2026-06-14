@@ -1,0 +1,407 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+.heroCard {
+  margin: $spacing-md $page-padding;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  box-shadow: 0 10rpx 40rpx rgba(139, 92, 246, 0.25);
+  color: $color-text-white;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroCard::after {
+  content: '';
+  position: absolute;
+  top: -60rpx;
+  right: -60rpx;
+  width: 200rpx;
+  height: 200rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.heroTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.heroTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  line-height: 1.3;
+  flex: 1;
+  margin-right: $spacing-md;
+}
+
+.favIcon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.heroSeriesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+  position: relative;
+  z-index: 1;
+}
+
+.seriesChip {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6rpx 18rpx;
+  border-radius: $radius-button;
+  font-size: $font-size-xs;
+  backdrop-filter: blur(4px);
+}
+
+.heroPrice {
+  font-size: 56rpx;
+  font-weight: $font-weight-bold;
+  color: $color-accent-light;
+  letter-spacing: -1rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.heroPriceLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.7);
+  margin-right: $spacing-xs;
+}
+
+.section {
+  margin: $spacing-md $page-padding;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.sectionAction {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.infoLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  text-align: right;
+  max-width: 420rpx;
+}
+
+.infoValueHighlight {
+  color: $color-price;
+  font-weight: $font-weight-bold;
+  font-size: $font-size-md;
+}
+
+.infoValueWarn {
+  color: $color-error;
+}
+
+.paymentItem {
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.paymentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.paymentType {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.paymentTypeText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.paymentAmount {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
+
+.paymentMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.paymentAction {
+  margin-top: $spacing-md;
+}
+
+.btnPay {
+  @include button-reset;
+  width: 100%;
+  height: $button-height-md;
+  background: linear-gradient(135deg, $color-success 0%, $color-success-light 100%);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.timeline {
+  padding: $spacing-md $spacing-lg;
+}
+
+.timelineItem {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-sm 0;
+  position: relative;
+}
+
+.timelineDotWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 48rpx;
+}
+
+.timelineDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: $radius-round;
+  background: $color-border;
+  flex-shrink: 0;
+}
+
+.timelineDotActive {
+  background: $color-primary;
+  box-shadow: 0 0 0 6rpx $color-primary-soft;
+}
+
+.timelineLine {
+  width: 2rpx;
+  flex: 1;
+  background: $color-divider;
+  margin-top: 4rpx;
+  min-height: 20rpx;
+}
+
+.timelineContent {
+  flex: 1;
+  padding-bottom: $spacing-sm;
+}
+
+.timelineTitle {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.timelineTitleDone {
+  color: $color-text-tertiary;
+  font-weight: $font-weight-normal;
+}
+
+.timelineTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-lg;
+}
+
+.photoItem {
+  aspect-ratio: 1;
+  border-radius: $radius-md;
+  background: $color-bg-hover;
+  overflow: position: relative;
+}
+
+.photoItem {
+  position: relative;
+  overflow: hidden;
+}
+
+.photoAdd {
+  border: 2rpx dashed $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: $spacing-xs;
+  background: transparent;
+}
+
+.photoAddIcon {
+  font-size: 40rpx;
+  color: $color-text-tertiary;
+}
+
+.photoAddText {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.notesBox {
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  background: $color-bg-hover;
+  margin: $spacing-md;
+  border-radius: $radius-md;
+}
+
+.emptyNotes {
+  color: $color-text-disabled;
+  font-style: italic;
+  text-align: center;
+  padding: $spacing-md;
+}
+
+.issueItem {
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.issueHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-xs;
+}
+
+.issueType {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-error;
+}
+
+.issueDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  margin-bottom: $spacing-sm;
+}
+
+.issueFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.bottomBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  gap: $spacing-md;
+}
+
+.btn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  box-shadow: 0 6rpx 20rpx rgba(139, 92, 246, 0.3);
+}
+
+.btnOutline {
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  color: $color-text-secondary;
+}

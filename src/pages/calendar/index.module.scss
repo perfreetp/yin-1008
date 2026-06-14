@@ -1,0 +1,317 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 48rpx;
+}
+
+.monthSelector {
+  padding: $spacing-lg $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.navBtn {
+  @include button-reset;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: $color-primary-soft;
+  color: $color-primary;
+  font-size: $font-size-xl;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-primary;
+    color: $color-text-white;
+  }
+}
+
+.monthTitleWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.monthTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.monthTotal {
+  font-size: $font-size-sm;
+  color: $color-price;
+  font-weight: $font-weight-semibold;
+  margin-top: 4rpx;
+}
+
+.calendarWrap {
+  padding: $spacing-md $page-padding;
+  background: $color-bg-card;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: $spacing-sm;
+}
+
+.weekday {
+  text-align: center;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  font-weight: $font-weight-medium;
+  padding: $spacing-sm 0;
+}
+
+.weekend {
+  color: $color-error;
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8rpx;
+}
+
+.dayCell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-md;
+  position: relative;
+  transition: all $transition-base;
+}
+
+.dayEmpty {
+  background: transparent;
+}
+
+.dayNormal {
+  background: $color-bg-hover;
+}
+
+.dayNumber {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.dayWeekend .dayNumber {
+  color: $color-error;
+}
+
+.dayToday {
+  background: $color-primary-soft;
+  .dayNumber {
+    color: $color-primary;
+    font-weight: $font-weight-bold;
+  }
+}
+
+.dayHasPayment {
+  background: $color-warning-soft;
+  border: 2rpx solid $color-warning;
+
+  .dayNumber {
+    color: $color-warning;
+    font-weight: $font-weight-bold;
+  }
+}
+
+.daySelected {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  .dayNumber { color: $color-text-white; }
+  .paymentDot { background: $color-text-white; }
+}
+
+.paymentDot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: $radius-round;
+  background: $color-warning;
+  margin-top: 4rpx;
+}
+
+.section {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.sectionBadge {
+  background: $color-warning-soft;
+  padding: 4rpx 18rpx;
+  border-radius: $radius-button;
+  font-size: $font-size-xs;
+  color: $color-warning;
+  font-weight: $font-weight-semibold;
+}
+
+.summaryCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: 6rpx;
+}
+
+.summaryValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.summaryHighlight .summaryValue {
+  color: $color-price;
+}
+
+.summarySuccess .summaryValue {
+  color: $color-success;
+}
+
+.timeline {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.timelineItem {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+  position: relative;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.timelineDotWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 64rpx;
+}
+
+.timelineDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: $radius-round;
+  background: $color-warning;
+  margin-top: 8rpx;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 6rpx rgba(245, 158, 11, 0.12);
+}
+
+.timelineLine {
+  width: 2rpx;
+  flex: 1;
+  background: $color-divider;
+  margin-top: $spacing-xs;
+}
+
+.timelineContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.timelineDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: 6rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.urgentBadge {
+  background: $color-error-soft;
+  color: $color-error;
+  padding: 2rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: 20rpx;
+  font-weight: $font-weight-medium;
+}
+
+.timelineTitle {
+  font-size: $font-size-md;
+  font-weight: $font-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  margin-bottom: 6rpx;
+  font-weight: 600;
+}
+
+.timelineMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: $spacing-sm;
+}
+
+.timelineShop {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  background: $color-bg-hover;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-xs;
+}
+
+.timelineAmount {
+  font-size: $font-size-lg;
+  color: $color-price;
+  font-weight: $font-weight-bold;
+}
+
+.delayTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2rpx 10rpx;
+  background: $color-error-soft;
+  color: $color-error;
+  font-size: 20rpx;
+  border-radius: $radius-xs;
+  margin-left: $spacing-xs;
+}
